@@ -118,6 +118,7 @@ npm run dist
 | `npm run dist:win` | Builds the Windows installer |
 | `npm test` | Runs the end-to-end tests on a Mac |
 | `npm run icon` | Regenerates the app icons from `build/icon.svg` |
+| `npm run installer-art` | Regenerates the Mac and Windows installer art from `build/dmg-statue.png` |
 
 The tests drive the app from source using a temporary folder and a simulated camera, so they don't touch your real entries or your webcam.
 

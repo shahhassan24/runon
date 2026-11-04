@@ -59,7 +59,7 @@ We've only created this build on a Mac. The same command may work on a Windows P
 **To install or update:**
 
 1. Quit Runon if it's open.
-2. Copy the `.exe` to the Windows PC and run it. It installs without asking for a folder.
+2. Copy the `.exe` to the Windows PC, run it, and follow the steps.
 
 The Windows version hasn't been installed or run on a real PC yet, so test it before sharing it.
 

@@ -13,7 +13,8 @@
     "dist": "electron-builder --mac --win",
     "test": "node test/e2e.js",
     "dist:mac": "electron-builder --mac",
-    "dist:win": "electron-builder --win"
+    "dist:win": "electron-builder --win",
+    "installer-art": "electron tools/make-installer-art.js"
   },
   "devDependencies": {
     "electron": "45.2.2",
@@ -51,6 +52,33 @@
     },
     "win": {
       "artifactName": "${productName}-${version}-windows-setup.${ext}"
+    },
+    "dmg": {
+      "background": "build/background.png",
+      "iconSize": 100,
+      "window": {
+        "width": 720,
+        "height": 420
+      },
+      "contents": [
+        {
+          "x": 360,
+          "y": 200
+        },
+        {
+          "x": 600,
+          "y": 200,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerSidebar": "build/installerSidebar.bmp",
+      "uninstallerSidebar": "build/installerSidebar.bmp"
     }
   }
 }
