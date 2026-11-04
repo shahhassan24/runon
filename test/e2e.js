@@ -12,6 +12,11 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'runon-data-'));
 const profileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'runon-profile-'));
 const pdfPath = path.join(dataDir, '..', `runon-test-${process.pid}.pdf`);
 const results = [];
+let page;
+const clickMenu = async (selector) => {
+  if (await page.$eval('#menu', (menu) => menu.hidden)) await page.click('#menuBtn');
+  await page.click(selector);
+};
 
 async function launch() {
   const app = await electron.launch({
@@ -49,7 +54,9 @@ const mdFiles = () => fs.readdirSync(dataDir).filter((name) => name.endsWith('.m
 const newest = () => mdFiles().map((name) => path.join(dataDir, name)).sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs)[0];
 
 (async () => {
-  let { app, page, errors } = await launch();
+  let app;
+  let errors;
+  ({ app, page, errors } = await launch());
 
   await step('first launch shows the welcome entry', async () => {
     assert.match(await page.inputValue('#editor'), /^Hi\. Welcome to Runon/);
@@ -76,12 +83,12 @@ const newest = () => mdFiles().map((name) => path.join(dataDir, name)).sort((a, 
   });
 
   await step('backspace toggle blocks deleting', async () => {
-    await page.click('#backspaceBtn');
-    assert.strictEqual(await page.textContent('#backspaceBtn'), 'Backspace is Off');
+    await clickMenu('#backspaceBtn');
+    assert.strictEqual(await page.textContent('#backspaceLabel'), 'Backspace is Off');
     await page.focus('#editor');
     await page.keyboard.press('Backspace');
     assert.strictEqual(await page.inputValue('#editor'), 'hello runon');
-    await page.click('#backspaceBtn');
+    await clickMenu('#backspaceBtn');
     await page.focus('#editor');
     await page.keyboard.press('Backspace');
     assert.strictEqual(await page.inputValue('#editor'), 'hello runo');
@@ -98,8 +105,8 @@ const newest = () => mdFiles().map((name) => path.join(dataDir, name)).sort((a, 
     const installed = await page.evaluate(async () => (await window.queryLocalFonts()).length);
     results.push(`INFO installed fonts readable: ${installed}`);
     assert.ok(installed > 20, 'Random uses fonts from this Mac');
-    await page.click('[data-font="Lato"]');
-    assert.ok(await page.evaluate(() => document.fonts.check('18px Lato')));
+    await page.click('[data-font="Literata"]');
+    assert.ok(await page.evaluate(() => document.fonts.check('18px Literata')));
   });
 
   await step('timer starts, fades the bar, scrolls, and resets', async () => {
@@ -108,27 +115,38 @@ const newest = () => mdFiles().map((name) => path.join(dataDir, name)).sort((a, 
     assert.strictEqual(await page.textContent('#timerBtn'), '20:00');
     await page.mouse.wheel(0, -100);
     await page.click('#timerBtn');
+    await page.click('[data-minutes="20"]');
+    assert.strictEqual(await page.textContent('#timerValue'), '20:00');
+    await page.click('#timerLess');
+    assert.strictEqual(await page.textContent('#timerValue'), '19:00');
+    await page.click('[data-minutes="15"]');
+    await page.click('#timerStart');
     await page.waitForTimeout(1500);
     assert.match(await page.textContent('#timerBtn'), /^14:5\d$/);
     await page.mouse.move(500, 200);
     assert.ok(await page.$eval('#nav', (el) => el.classList.contains('faded')));
+    assert.ok(await page.$eval('#runlineFill', (el) => el.getBoundingClientRect().width > 0), 'the line grows while the timer runs');
+    assert.ok(await page.$eval('#editor', (el) => el.classList.contains('nav-hidden')));
     await page.hover('#timerBtn');
     assert.ok(!(await page.$eval('#nav', (el) => el.classList.contains('faded'))));
-    await page.dblclick('#timerBtn');
-    await page.waitForTimeout(100);
+    await page.click('#timerBtn');
+    await page.click('#timerReset');
+    await page.mouse.click(500, 200);
     assert.strictEqual(await page.textContent('#timerBtn'), '15:00');
+    await page.waitForTimeout(1100);
+    assert.strictEqual(await page.$eval('#runlineFill', (el) => el.getBoundingClientRect().width), 0, 'reset empties the line');
   });
 
   await step('chat gates short text then opens the chosen AI', async () => {
-    await page.click('#chatBtn');
+    await clickMenu('#chatBtn');
     assert.match(await page.textContent('#chatPopover'), /minimum 5 minutes/);
-    await page.click('#chatBtn');
+    await clickMenu('#chatBtn');
     await page.fill('#editor', 'word '.repeat(90));
-    await page.click('#chatBtn');
+    await clickMenu('#chatBtn');
     await page.click('#chatPopover button:has-text("Claude")');
     const opened = await app.evaluate(() => globalThis.opened);
     assert.match(opened[0], /^https:\/\/claude\.ai\/new\?q=Take%20a%20look/);
-    await page.click('#chatBtn');
+    await clickMenu('#chatBtn');
     await page.click('#chatPopover button:has-text("Copy Prompt")');
     await page.waitForFunction(() => document.querySelector('#chatPopover').textContent.includes('Copied!'));
     assert.match(await app.evaluate(({ clipboard }) => clipboard.readText()), /my entry:\n\nword word/);
@@ -137,7 +155,7 @@ const newest = () => mdFiles().map((name) => path.join(dataDir, name)).sort((a, 
 
   await step('very long entries fall back to copying', async () => {
     await page.fill('#editor', 'long '.repeat(2000));
-    await page.click('#chatBtn');
+    await clickMenu('#chatBtn');
     assert.match(await page.textContent('#chatPopover'), /quite long/);
     await page.mouse.click(500, 200);
     await page.fill('#editor', 'a real entry that exports to a pdf file\n\nsecond paragraph');
@@ -147,7 +165,20 @@ const newest = () => mdFiles().map((name) => path.join(dataDir, name)).sort((a, 
   await step('history lists entries and switching keeps text', async () => {
     await page.click('#historyBtn');
     assert.strictEqual(await page.locator('.entry').count(), 2);
-    assert.match(await page.textContent('#credit'), /Built by Lord Shady/);
+    assert.match(await page.textContent('#credit'), /Built by Shah Hassan/);
+    assert.strictEqual(await page.textContent('.day-label'), 'Today');
+    await page.click('#randomBtn');
+    await page.waitForFunction(() => document.getElementById('randomBtn').textContent.startsWith('Random ['));
+    const bar = await page.evaluate(() => {
+      const items = [...document.querySelectorAll('#nav > *, #fontNav > *')].filter((el) => el.id !== 'fontNav' && !el.classList.contains('nav-spacer'));
+      const boxes = items.map((el) => el.getBoundingClientRect()).sort((a, b) => a.left - b.left);
+      return {
+        fits: document.getElementById('nav').scrollWidth <= document.getElementById('nav').clientWidth,
+        overlaps: boxes.filter((box, i) => i && box.left < boxes[i - 1].right - 0.5).length,
+      };
+    });
+    assert.deepStrictEqual(bar, { fits: true, overlaps: 0 }, 'bottom bar fits with History open and a long font name');
+    await page.click('[data-font="Literata"]');
     assert.ok(await page.$eval('.logo-dark-ink', (image) => image.complete && image.naturalWidth > 0 && image.offsetHeight > 0), 'dark-ink logo shows in light mode');
     await page.locator('.entry').nth(1).click();
     await page.waitForFunction(() => document.getElementById('editor').value.startsWith('Hi. Welcome'));
@@ -162,12 +193,12 @@ const newest = () => mdFiles().map((name) => path.join(dataDir, name)).sort((a, 
     for (let i = 0; i < 50 && !fs.existsSync(pdfPath); i += 1) await page.waitForTimeout(100);
     const pdf = fs.readFileSync(pdfPath);
     assert.strictEqual(pdf.subarray(0, 5).toString(), '%PDF-');
-    assert.ok(pdf.includes('Lato'), 'Lato should be embedded');
+    assert.ok(pdf.includes('Literata'), 'Literata should be embedded');
   });
 
   await step('dark theme applies and persists', async () => {
-    await page.click('#themeBtn');
-    assert.strictEqual(await page.$eval('#editor', (el) => getComputedStyle(document.body).backgroundColor), 'rgb(0, 0, 0)');
+    await clickMenu('#themeBtn');
+    assert.strictEqual(await page.$eval('#editor', (el) => getComputedStyle(document.body).backgroundColor), 'rgb(17, 17, 17)');
     assert.ok(await page.$eval('.logo-light-ink', (image) => image.complete && image.naturalWidth > 0 && image.offsetHeight > 0), 'light-ink logo shows in dark mode');
     assert.strictEqual(await page.$eval('.logo-dark-ink', (image) => image.offsetHeight), 0);
     assert.ok(await page.$eval('#sunIcon', (icon) => icon.getBoundingClientRect().width > 0), 'sun icon shows in dark mode');
@@ -176,17 +207,17 @@ const newest = () => mdFiles().map((name) => path.join(dataDir, name)).sort((a, 
   await page.screenshot({ path: path.join(shots, '3-dark.png') });
 
   await step('fullscreen toggles', async () => {
-    await page.click('#fullscreenBtn');
-    await page.waitForFunction(() => document.getElementById('fullscreenBtn').textContent === 'Minimize', null, { timeout: 8000 });
-    await page.click('#fullscreenBtn');
-    await page.waitForFunction(() => document.getElementById('fullscreenBtn').textContent === 'Fullscreen', null, { timeout: 8000 });
+    await clickMenu('#fullscreenBtn');
+    await page.waitForFunction(() => document.getElementById('fullscreenLabel').textContent === 'Exit Fullscreen', null, { timeout: 8000 });
+    await clickMenu('#fullscreenBtn');
+    await page.waitForFunction(() => document.getElementById('fullscreenLabel').textContent === 'Fullscreen', null, { timeout: 8000 });
     await page.waitForTimeout(1000);
   });
 
   let videoFile;
   await step('recording saves a playable, seekable video entry', async () => {
     await page.click('#newEntryBtn');
-    await page.click('#videoBtn');
+    await clickMenu('#videoBtn');
     await page.waitForSelector('#recorder:not([hidden])');
     await page.waitForFunction(() => document.getElementById('preview').videoWidth > 0);
     await page.waitForTimeout(500);
@@ -248,7 +279,7 @@ const newest = () => mdFiles().map((name) => path.join(dataDir, name)).sort((a, 
 
   await step('closing the recorder discards the recording', async () => {
     const before = fs.readdirSync(path.join(dataDir, 'Videos')).length;
-    await page.click('#videoBtn');
+    await clickMenu('#videoBtn');
     await page.waitForSelector('#recorder:not([hidden])');
     await page.click('#recorderToggle');
     await page.waitForTimeout(1500);

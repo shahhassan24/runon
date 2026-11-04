@@ -9,13 +9,15 @@ const PLACEHOLDERS = [
 ];
 const FONT_SIZES = [16, 18, 20, 22, 24, 26];
 const FONT_STACKS = {
-  Lato: '"Lato", sans-serif',
+  Literata: '"Literata", Georgia, serif',
   Arial: 'Arial, sans-serif',
   System: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   Serif: '"Times New Roman", serif',
 };
-const DEFAULT_TIMER = 900;
-const MAX_TIMER = 2700;
+const MIN_TIMER_MINUTES = 1;
+const MAX_TIMER_MINUTES = 120;
+const savedTimerMinutes = Number(localStorage.getItem('timerMinutes'));
+const DEFAULT_TIMER = (savedTimerMinutes >= MIN_TIMER_MINUTES && savedTimerMinutes <= MAX_TIMER_MINUTES ? savedTimerMinutes : 15) * 60;
 const SCROLL_STEP = 40;
 const MAX_CHAT_URL = 6000;
 const SAVE_DELAY = 150;
@@ -27,12 +29,13 @@ const state = {
   selected: null,
   saveTimer: null,
   dirty: false,
-  fontFamily: FONT_STACKS.Lato,
+  fontFamily: FONT_STACKS.Literata,
+  fontKey: 'Literata',
   fontSize: 18,
   fontList: null,
   timeRemaining: DEFAULT_TIMER,
+  timerTotal: DEFAULT_TIMER,
   timerRunning: false,
-  lastTimerClick: 0,
   scrollBuffer: 0,
   backspaceDisabled: false,
 };
@@ -176,75 +179,96 @@ function actionButton(className, label, markup, action) {
   return button;
 }
 
-function renderEntries() {
-  const list = $('entryList');
-  if ($('sidebar').hidden) return;
-  const rows = state.entries.map((entry) => {
-    const row = document.createElement('div');
-    row.className = `entry${entry === state.selected ? ' selected' : ''}`;
-    row.tabIndex = 0;
-    row.setAttribute('role', 'button');
-    row.addEventListener('click', () => {
-      if (entry !== state.selected) selectEntry(entry);
-    });
-    row.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' && event.target === row && entry !== state.selected) selectEntry(entry);
-    });
-
-    if (entry.type === 'video') {
-      const thumb = document.createElement('div');
-      thumb.className = 'thumb';
-      if (entry.hasThumbnail) {
-        const image = document.createElement('img');
-        image.src = mediaUrl(entry, 'thumbnail');
-        image.alt = '';
-        thumb.append(image);
-      }
-      thumb.append(icon('<path d="M4 2.5v11l9-5.5z"/>'));
-      row.append(thumb);
-    }
-
-    const body = document.createElement('div');
-    body.className = 'entry-body';
-    const top = document.createElement('div');
-    top.className = 'entry-top';
-    const preview = document.createElement('div');
-    preview.className = 'entry-preview';
-    preview.textContent = entry.previewText;
-    const actions = document.createElement('div');
-    actions.className = 'entry-actions';
-    if (entry.type === 'text') {
-      actions.append(actionButton(
-        'export',
-        'Export entry as PDF',
-        '<path class="stroke" d="M8 2v8M4.5 7 8 10.5 11.5 7M3 14h10"/>',
-        () => exportEntry(entry),
-      ));
-    }
-    actions.append(actionButton(
-      'trash',
-      'Move entry to Trash',
-      '<path class="stroke" d="M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.5h6.6L12 4"/>',
-      () => deleteEntry(entry),
-    ));
-    top.append(preview, actions);
-    const date = document.createElement('div');
-    date.className = 'entry-date';
-    date.textContent = entry.displayDate;
-    body.append(top, date);
-    row.append(body);
-    return row;
-  });
-  list.replaceChildren(...rows);
+function dayLabel(entry) {
+  const day = new Date(entry.timestamp).toDateString();
+  if (day === new Date().toDateString()) return 'Today';
+  if (day === new Date(Date.now() - 864e5).toDateString()) return 'Yesterday';
+  return entry.displayDate;
 }
 
-/* ---------- Bottom bar ---------- */
+function renderEntry(entry) {
+  const row = document.createElement('div');
+  row.className = `entry${entry === state.selected ? ' selected' : ''}`;
+  row.tabIndex = 0;
+  row.setAttribute('role', 'button');
+  row.addEventListener('click', () => {
+    if (entry !== state.selected) selectEntry(entry);
+  });
+  row.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' && event.target === row && entry !== state.selected) selectEntry(entry);
+  });
+
+  if (entry.type === 'video') {
+    const thumb = document.createElement('div');
+    thumb.className = 'thumb';
+    if (entry.hasThumbnail) {
+      const image = document.createElement('img');
+      image.src = mediaUrl(entry, 'thumbnail');
+      image.alt = '';
+      thumb.append(image);
+    }
+    thumb.append(icon('<path d="M4 2.5v11l9-5.5z"/>'));
+    row.append(thumb);
+  }
+
+  const body = document.createElement('div');
+  body.className = 'entry-body';
+  const top = document.createElement('div');
+  top.className = 'entry-top';
+  const preview = document.createElement('div');
+  preview.className = 'entry-preview';
+  preview.textContent = entry.previewText || 'Empty entry';
+  const actions = document.createElement('div');
+  actions.className = 'entry-actions';
+  if (entry.type === 'text') {
+    actions.append(actionButton(
+      'export',
+      'Export entry as PDF',
+      '<path class="stroke" d="M8 2v8M4.5 7 8 10.5 11.5 7M3 14h10"/>',
+      () => exportEntry(entry),
+    ));
+  }
+  actions.append(actionButton(
+    'trash',
+    'Delete entry',
+    '<path class="stroke" d="M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.5h6.6L12 4"/>',
+    () => deleteEntry(entry),
+  ));
+  top.append(preview, actions);
+  const time = document.createElement('div');
+  time.className = 'entry-time';
+  time.textContent = new Date(entry.timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  body.append(top, time);
+  row.append(body);
+  return row;
+}
+
+function renderEntries() {
+  if ($('sidebar').hidden) return;
+  const groups = [];
+  let currentLabel = null;
+  state.entries.forEach((entry) => {
+    const label = dayLabel(entry);
+    if (label !== currentLabel) {
+      currentLabel = label;
+      const heading = document.createElement('div');
+      heading.className = 'day-label';
+      heading.textContent = label;
+      const entries = document.createElement('div');
+      entries.className = 'day-entries';
+      groups.push(heading, entries);
+    }
+    groups[groups.length - 1].append(renderEntry(entry));
+  });
+  $('entryList').replaceChildren(...groups);
+}
+
+/* ---------- Controls ---------- */
 
 function updateModeControls() {
   const video = isVideoSelected();
-  $('fontNav').style.visibility = video ? 'hidden' : 'visible';
+  $('fontNav').hidden = video;
   $('backspaceBtn').hidden = video;
-  $('backspaceDot').hidden = video;
   closePopovers();
 }
 
@@ -252,12 +276,17 @@ function applyFont() {
   document.documentElement.style.setProperty('--editor-font', state.fontFamily);
   document.documentElement.style.setProperty('--editor-size', `${state.fontSize}px`);
   $('sizeBtn').textContent = `${state.fontSize}px`;
+  document.querySelectorAll('.font-btn').forEach((button) => {
+    button.classList.toggle('active', button.dataset.font === state.fontKey);
+  });
+  $('randomBtn').classList.toggle('active', state.fontKey === 'Random');
 }
 
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
   $('moonIcon').toggleAttribute('hidden', theme === 'dark');
   $('sunIcon').toggleAttribute('hidden', theme !== 'dark');
+  $('themeLabel').textContent = theme === 'dark' ? 'Light mode' : 'Dark mode';
   localStorage.setItem('colorScheme', theme);
   api.setTheme(theme);
 }
@@ -273,7 +302,16 @@ async function randomFonts() {
 function renderTimer() {
   const minutes = Math.floor(state.timeRemaining / 60);
   const seconds = String(state.timeRemaining % 60).padStart(2, '0');
-  $('timerBtn').textContent = `${minutes}:${seconds}`;
+  const time = `${minutes}:${seconds}`;
+  $('timerBtn').textContent = time;
+  $('timerValue').textContent = time;
+  const elapsed = state.timerTotal - state.timeRemaining;
+  $('runlineFill').style.width = `${(elapsed / state.timerTotal) * 100}%`;
+  if (state.timerRunning) $('timerStart').textContent = 'Pause';
+  else $('timerStart').textContent = elapsed > 0 && state.timeRemaining > 0 ? 'Resume' : 'Start';
+  document.querySelectorAll('[data-minutes]').forEach((button) => {
+    button.classList.toggle('active', Number(button.dataset.minutes) * 60 === state.timerTotal);
+  });
 }
 
 function setNavVisible(visible) {
@@ -282,24 +320,45 @@ function setNavVisible(visible) {
 }
 
 function tick() {
-  if (state.timerRunning && state.timeRemaining > 0) state.timeRemaining -= 1;
-  if (state.timerRunning && state.timeRemaining === 0) {
+  if (!state.timerRunning) return;
+  state.timeRemaining -= 1;
+  if (state.timeRemaining === 0) {
     state.timerRunning = false;
     setNavVisible(true);
+    $('runline').classList.add('finished');
   }
   renderTimer();
 }
 
-function handleTimerClick() {
-  const now = Date.now();
-  if (now - state.lastTimerClick < 300) {
-    state.timeRemaining = DEFAULT_TIMER;
-    state.timerRunning = false;
-    state.lastTimerClick = 0;
-  } else {
-    state.timerRunning = !state.timerRunning;
-    state.lastTimerClick = now;
+function setTimerMinutes(minutes) {
+  const clamped = Math.min(Math.max(minutes, MIN_TIMER_MINUTES), MAX_TIMER_MINUTES);
+  state.timerTotal = clamped * 60;
+  state.timeRemaining = state.timerTotal;
+  localStorage.setItem('timerMinutes', String(clamped));
+  $('runline').classList.remove('finished');
+  renderTimer();
+}
+
+function stepTimer(direction) {
+  setTimerMinutes(Math.ceil(state.timeRemaining / 60) + direction);
+}
+
+function toggleTimer() {
+  $('runline').classList.remove('finished');
+  state.timerRunning = !state.timerRunning;
+  if (state.timerRunning) {
+    if (state.timeRemaining === 0) state.timeRemaining = state.timerTotal;
+    closePopovers();
+    setNavVisible(false);
+    if (!isVideoSelected()) editor.focus();
   }
+  renderTimer();
+}
+
+function resetTimer() {
+  state.timerRunning = false;
+  state.timeRemaining = state.timerTotal;
+  $('runline').classList.remove('finished');
   renderTimer();
 }
 
@@ -309,15 +368,15 @@ function handleTimerScroll(event) {
   if (Math.abs(state.scrollBuffer) < SCROLL_STEP) return;
   const direction = state.scrollBuffer > 0 ? 5 : -5;
   state.scrollBuffer = 0;
-  const minutes = Math.floor(state.timeRemaining / 60) + direction;
-  const rounded = Math.trunc(minutes / 5) * 5;
-  state.timeRemaining = Math.min(Math.max(rounded * 60, 0), MAX_TIMER);
-  renderTimer();
+  const minutes = Math.ceil(state.timeRemaining / 60) + direction;
+  setTimerMinutes(Math.trunc(minutes / 5) * 5);
 }
 
 /* ---------- Popovers ---------- */
 
 function closePopovers() {
+  $('menu').hidden = true;
+  $('timerPanel').hidden = true;
   $('chatPopover').hidden = true;
   $('videoPopover').hidden = true;
 }
@@ -420,8 +479,8 @@ function chooseFormat() {
 
 function setPreparing(preparing) {
   recorder.preparing = preparing;
-  $('videoBtn').querySelector('.icon').toggleAttribute('hidden', preparing);
-  $('videoBtn').querySelector('.spinner').hidden = !preparing;
+  $('menuBtn').querySelector('.mark').toggleAttribute('hidden', preparing);
+  $('menuBtn').querySelector('.spinner').hidden = !preparing;
 }
 
 async function openRecorder() {
@@ -582,7 +641,10 @@ async function toggleRecording() {
 /* ---------- Wiring ---------- */
 
 function wireControls() {
-  editor.addEventListener('input', scheduleSave);
+  editor.addEventListener('input', () => {
+    scheduleSave();
+    if (state.timerRunning) setNavVisible(false);
+  });
   editor.addEventListener('keydown', (event) => {
     if (state.backspaceDisabled && (event.key === 'Backspace' || event.key === 'Delete')) {
       event.preventDefault();
@@ -598,6 +660,7 @@ function wireControls() {
   document.querySelectorAll('.font-btn').forEach((button) => {
     button.addEventListener('click', () => {
       state.fontFamily = FONT_STACKS[button.dataset.font];
+      state.fontKey = button.dataset.font;
       $('randomBtn').textContent = 'Random';
       applyFont();
     });
@@ -606,11 +669,24 @@ function wireControls() {
   $('randomBtn').addEventListener('click', async () => {
     const family = randomOf(await randomFonts());
     state.fontFamily = `${JSON.stringify(family)}, sans-serif`;
+    state.fontKey = 'Random';
     $('randomBtn').textContent = `Random [${family}]`;
     applyFont();
   });
 
-  $('timerBtn').addEventListener('click', handleTimerClick);
+  $('timerBtn').addEventListener('click', () => {
+    const opening = $('timerPanel').hidden;
+    closePopovers();
+    $('timerPanel').hidden = !opening;
+    if (opening) $('timerStart').focus();
+  });
+  $('timerStart').addEventListener('click', toggleTimer);
+  $('timerReset').addEventListener('click', resetTimer);
+  $('timerLess').addEventListener('click', () => stepTimer(-1));
+  $('timerMore').addEventListener('click', () => stepTimer(1));
+  document.querySelectorAll('[data-minutes]').forEach((button) => {
+    button.addEventListener('click', () => setTimerMinutes(Number(button.dataset.minutes)));
+  });
   $('timerBtn').addEventListener('wheel', handleTimerScroll, { passive: false });
   $('videoBtn').addEventListener('click', openRecorder);
   $('chatBtn').addEventListener('click', () => {
@@ -623,17 +699,26 @@ function wireControls() {
   });
   $('backspaceBtn').addEventListener('click', () => {
     state.backspaceDisabled = !state.backspaceDisabled;
-    $('backspaceBtn').textContent = state.backspaceDisabled ? 'Backspace is Off' : 'Backspace is On';
+    $('backspaceLabel').textContent = state.backspaceDisabled ? 'Backspace is Off' : 'Backspace is On';
     editor.focus();
   });
-  $('fullscreenBtn').addEventListener('click', () => api.toggleFullscreen());
+  $('fullscreenBtn').addEventListener('click', () => {
+    closePopovers();
+    api.toggleFullscreen();
+  });
   $('newEntryBtn').addEventListener('click', createEntry);
+  $('menuBtn').addEventListener('click', () => {
+    const opening = $('menu').hidden;
+    closePopovers();
+    $('menu').hidden = !opening;
+  });
   $('themeBtn').addEventListener('click', () => {
     applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
   });
   $('historyBtn').addEventListener('click', () => {
     $('sidebar').hidden = !$('sidebar').hidden;
     renderEntries();
+    if (!isVideoSelected()) editor.focus();
   });
   $('historyHeader').addEventListener('click', () => api.openFolder());
 
@@ -645,6 +730,9 @@ function wireControls() {
   document.addEventListener('mousedown', (event) => {
     if (!event.target.closest('.anchor')) closePopovers();
   });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closePopovers();
+  });
 
   $('recorderToggle').addEventListener('click', toggleRecording);
   $('recorderClose').addEventListener('click', cancelRecorder);
@@ -655,7 +743,7 @@ function wireControls() {
 
   api.onNewEntry(createEntry);
   api.onFullscreenChange((value) => {
-    $('fullscreenBtn').textContent = value ? 'Minimize' : 'Fullscreen';
+    $('fullscreenLabel').textContent = value ? 'Exit Fullscreen' : 'Fullscreen';
   });
 
   window.addEventListener('pagehide', flushSave);
@@ -665,5 +753,6 @@ function wireControls() {
 document.documentElement.dataset.platform = api.platform;
 applyTheme(localStorage.getItem('colorScheme') === 'dark' ? 'dark' : 'light');
 applyFont();
+renderTimer();
 wireControls();
 loadEntries().catch((error) => console.error('Could not load entries:', error));

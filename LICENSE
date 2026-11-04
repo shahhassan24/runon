@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2026 Lord Shady
+Copyright (c) 2026 Shah Hassan
 Copyright (c) 2025 Farza Majeed
 
 Runon is an Electron rebuild of Freewrite (https://github.com/farzaa/freewrite)
@@ -24,5 +24,5 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-The bundled Lato font is licensed under the SIL Open Font License; see
+The bundled Literata font is licensed under the SIL Open Font License; see
 src/renderer/fonts/OFL.txt.

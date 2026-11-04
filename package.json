@@ -3,7 +3,7 @@
   "productName": "Runon",
   "version": "1.0.0",
   "description": "A distraction-free freewriting app.",
-  "author": "Lord Shady",
+  "author": "Shah Hassan",
   "license": "MIT",
   "private": true,
   "main": "src/main.js",
@@ -21,8 +21,8 @@
     "playwright-core": "^1.50.0"
   },
   "build": {
-    "appId": "com.lordshady.runon",
-    "copyright": "Built by Lord Shady. Based on Freewrite by Farza Majeed.",
+    "appId": "com.shahhassan.runon",
+    "copyright": "Built by Shah Hassan. Based on Freewrite by Farza Majeed.",
     "files": [
       "src/**/*",
       "LICENSE"

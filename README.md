@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/writing-light.png" alt="Runon's writing screen in light mode, with an entry in progress and a minimal bar along the bottom" width="800">
+  <img src="docs/screenshots/writing-light.png" alt="Runon's writing screen in light mode, with an entry in progress, a few controls, and a thin timer line along the bottom" width="800">
 </p>
 
 ## Why Runon
@@ -25,24 +25,25 @@ Runon is built around that rule. There are no folders, formatting tools, or acco
 ## How it works
 
 1. Pick something to write about, like a decision, a problem at work, or a new idea.
-2. Click **Fullscreen**.
-3. Click the **timer**. The menu fades away, leaving only your words.
-4. Keep writing until the menu fades back in.
+2. Open **Menu** and click **Fullscreen**.
+3. Click the **time**, choose how long you want, and click **Start**. The controls fade away, leaving only your words and a thin line that grows as time passes.
+4. Keep writing until the controls fade back in.
 
-Turn **Backspace off** if you want to make going back impossible.
+Turn **Backspace off** in the menu if you want to make going back impossible.
 
 ## Features
 
-- **Timer:** 15 minutes by default. Scroll over it to change the time in 5-minute steps, up to 45 minutes, and double-click to reset.
+- **The line:** a thin line grows across the bottom of the screen as your timer runs. It's the only thing on screen besides your words.
+- **Timer:** pick a preset from 5 to 45 minutes or set anything from 1 to 120. Runon remembers your last choice.
 - **Backspace off:** blocks the Backspace and Delete keys so you keep moving forward.
 - **Autosave:** there's no save button. New entries are ready to write in as soon as you click **New Entry**.
-- **History:** browse past entries in the sidebar, export them as PDFs, or move them to the Trash.
+- **History:** browse past entries on a timeline grouped by day, export them as PDFs, or move them to the Trash.
 - **Video entries:** record yourself talking instead of typing, then play it back in the app.
 - **Chat, if you want it:** after a long session, send an entry to ChatGPT or Claude to talk it through.
-- **Your look:** light and dark themes, several text sizes, and Lato, Arial, System, Serif, or a random font from your computer.
+- **Your look:** light and dark themes, several text sizes, and Literata, Arial, System, Times, or a random font from your computer.
 
 <p align="center">
-  <img src="docs/screenshots/history-dark.png" alt="Runon in dark mode with the History sidebar open, listing past entries" width="800">
+  <img src="docs/screenshots/history-dark.png" alt="Runon in dark mode with the history timeline open, listing past entries grouped by day" width="800">
 </p>
 
 ## Your privacy
@@ -145,10 +146,10 @@ Runon is plain JavaScript, HTML, and CSS, with no frontend framework or bundler.
 
 ## Credits
 
-Built by **Lord Shady**.
+Built by **Shah Hassan**.
 
-Runon is an Electron rebuild of [Freewrite](https://github.com/farzaa/freewrite) by Farza Majeed, whose idea and design it's based on. The ChatGPT and Claude prompts also come from Freewrite.
+Runon began as an Electron rebuild of [Freewrite](https://github.com/farzaa/freewrite) by Farza Majeed, and its core idea and features come from there. The ChatGPT and Claude prompts also come from Freewrite.
 
 ## License
 
-[MIT](LICENSE). The bundled Lato font is under the [SIL Open Font License](src/renderer/fonts/OFL.txt).
+[MIT](LICENSE). The bundled Literata font is under the [SIL Open Font License](src/renderer/fonts/OFL.txt).

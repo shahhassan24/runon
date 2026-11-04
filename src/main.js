@@ -365,7 +365,7 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(() => {
     fs.mkdirSync(videosDir(), { recursive: true });
-    app.setAboutPanelOptions({ copyright: 'Built by Lord Shady. Based on Freewrite by Farza Majeed.' });
+    app.setAboutPanelOptions({ copyright: 'Built by Shah Hassan. Based on Freewrite by Farza Majeed.' });
     protocol.handle(MEDIA_SCHEME, serveMedia);
     configurePermissions();
     registerIpc();
