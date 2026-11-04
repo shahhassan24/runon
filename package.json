@@ -1,0 +1,56 @@
+{
+  "name": "runon",
+  "productName": "Runon",
+  "version": "1.0.0",
+  "description": "A distraction-free freewriting app.",
+  "author": "Lord Shady",
+  "license": "MIT",
+  "private": true,
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "icon": "electron tools/make-icon.js",
+    "dist": "electron-builder --mac --win",
+    "test": "node test/e2e.js",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "45.2.2",
+    "electron-builder": "26.18.0",
+    "playwright-core": "^1.50.0"
+  },
+  "build": {
+    "appId": "com.lordshady.runon",
+    "copyright": "Built by Lord Shady. Based on Freewrite by Farza Majeed.",
+    "files": [
+      "src/**/*",
+      "LICENSE"
+    ],
+    "electronLanguages": [
+      "en"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "minimumSystemVersion": "13.0",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "extendInfo": {
+        "NSCameraUsageDescription": "Runon needs camera access to record video entries.",
+        "NSMicrophoneUsageDescription": "Runon needs microphone access to record audio with your video entries."
+      },
+      "artifactName": "${productName}-${version}-mac-universal.${ext}"
+    },
+    "win": {
+      "artifactName": "${productName}-${version}-windows-setup.${ext}"
+    }
+  }
+}
