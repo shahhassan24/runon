@@ -3,10 +3,7 @@
 const api = window.runon;
 const $ = (id) => document.getElementById(id);
 
-const PLACEHOLDERS = [
-  'Begin writing', 'Pick a thought and go', 'Start typing', "What's on your mind",
-  'Just start', 'Type your first thought', 'Start with one sentence', 'Just say it',
-];
+const PLACEHOLDER = 'Begin anywhere. Don\u2019t stop.';
 const FONT_SIZES = [16, 18, 20, 22, 24, 26];
 const FONT_STACKS = {
   Literata: '"Literata", Georgia, serif',
@@ -21,6 +18,7 @@ const DEFAULT_TIMER = (savedTimerMinutes >= MIN_TIMER_MINUTES && savedTimerMinut
 const SCROLL_STEP = 40;
 const MAX_CHAT_URL = 6000;
 const SAVE_DELAY = 150;
+const THEME_FADE = 500;
 const MIN_CHAT_LENGTH = 350;
 const WELCOME_PREFIX = 'Hi. Welcome to Runon';
 
@@ -89,7 +87,7 @@ async function selectEntry(entry) {
 // The welcome guide is read from the top; everything else continues from the end.
 function showText(text, startAtTop) {
   editor.value = text;
-  editor.placeholder = randomOf(PLACEHOLDERS);
+  editor.placeholder = PLACEHOLDER;
   const caret = startAtTop ? 0 : text.length;
   editor.setSelectionRange(caret, caret);
   editor.focus();
@@ -265,7 +263,14 @@ function renderEntries() {
 
 /* ---------- Controls ---------- */
 
+function renderEntryDate() {
+  const date = new Date(state.selected.timestamp);
+  const part = (options) => date.toLocaleDateString('en-GB', options);
+  $('entryDate').textContent = `${part({ weekday: 'long' })} ${part({ day: 'numeric' })} ${part({ month: 'long' })}`;
+}
+
 function updateModeControls() {
+  renderEntryDate();
   const video = isVideoSelected();
   $('fontNav').hidden = video;
   $('backspaceBtn').hidden = video;
@@ -284,11 +289,17 @@ function applyFont() {
 
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
-  $('moonIcon').toggleAttribute('hidden', theme === 'dark');
-  $('sunIcon').toggleAttribute('hidden', theme !== 'dark');
   $('themeLabel').textContent = theme === 'dark' ? 'Light mode' : 'Dark mode';
   localStorage.setItem('colorScheme', theme);
   api.setTheme(theme);
+}
+
+function toggleTheme() {
+  const root = document.documentElement;
+  root.classList.add('theme-fading');
+  applyTheme(root.dataset.theme === 'dark' ? 'light' : 'dark');
+  clearTimeout(state.themeFadeTimer);
+  state.themeFadeTimer = setTimeout(() => root.classList.remove('theme-fading'), THEME_FADE);
 }
 
 async function randomFonts() {
@@ -316,6 +327,7 @@ function renderTimer() {
 
 function setNavVisible(visible) {
   nav.classList.toggle('faded', !visible);
+  $('topbar').classList.toggle('faded', !visible);
   editor.classList.toggle('nav-hidden', !visible);
 }
 
@@ -712,9 +724,7 @@ function wireControls() {
     closePopovers();
     $('menu').hidden = !opening;
   });
-  $('themeBtn').addEventListener('click', () => {
-    applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
-  });
+  $('themeBtn').addEventListener('click', toggleTheme);
   $('historyBtn').addEventListener('click', () => {
     $('sidebar').hidden = !$('sidebar').hidden;
     renderEntries();
@@ -743,6 +753,7 @@ function wireControls() {
 
   api.onNewEntry(createEntry);
   api.onFullscreenChange((value) => {
+    document.documentElement.classList.toggle('fullscreen', value);
     $('fullscreenLabel').textContent = value ? 'Exit Fullscreen' : 'Fullscreen';
   });
 

@@ -1,4 +1,4 @@
-// Drives the packaged app with a throwaway data folder and Chromium's fake camera.
+// Drives the app from source with a throwaway data folder and Chromium's fake camera.
 // Usage: npm test -- [screenshot directory]
 const { _electron: electron } = require('playwright-core');
 const assert = require('assert');
@@ -6,7 +6,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const executablePath = path.join(__dirname, '..', 'dist', 'mac-universal', 'Runon.app', 'Contents', 'MacOS', 'Runon');
+const repo = path.join(__dirname, '..');
+const executablePath = require('electron');
 const shots = process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'runon-shots-'));
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'runon-data-'));
 const profileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'runon-profile-'));
@@ -21,7 +22,8 @@ const clickMenu = async (selector) => {
 async function launch() {
   const app = await electron.launch({
     executablePath,
-    args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', `--user-data-dir=${profileDir}`],
+    cwd: repo,
+    args: ['.', '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', `--user-data-dir=${profileDir}`],
     env: { ...process.env, RUNON_DATA_DIR: dataDir },
   });
   await app.evaluate(({ dialog, ipcMain, shell }, target) => {
@@ -179,7 +181,7 @@ const newest = () => mdFiles().map((name) => path.join(dataDir, name)).sort((a, 
     });
     assert.deepStrictEqual(bar, { fits: true, overlaps: 0 }, 'bottom bar fits with History open and a long font name');
     await page.click('[data-font="Literata"]');
-    assert.ok(await page.$eval('.logo-dark-ink', (image) => image.complete && image.naturalWidth > 0 && image.offsetHeight > 0), 'dark-ink logo shows in light mode');
+    assert.ok(await page.$eval('.logo', (logo) => logo.getBoundingClientRect().height > 0), 'logo shows');
     await page.locator('.entry').nth(1).click();
     await page.waitForFunction(() => document.getElementById('editor').value.startsWith('Hi. Welcome'));
     await page.locator('.entry').nth(0).click();
@@ -198,9 +200,9 @@ const newest = () => mdFiles().map((name) => path.join(dataDir, name)).sort((a, 
 
   await step('dark theme applies and persists', async () => {
     await clickMenu('#themeBtn');
-    assert.strictEqual(await page.$eval('#editor', (el) => getComputedStyle(document.body).backgroundColor), 'rgb(17, 17, 17)');
-    assert.ok(await page.$eval('.logo-light-ink', (image) => image.complete && image.naturalWidth > 0 && image.offsetHeight > 0), 'light-ink logo shows in dark mode');
-    assert.strictEqual(await page.$eval('.logo-dark-ink', (image) => image.offsetHeight), 0);
+    await page.waitForTimeout(600);
+    assert.strictEqual(await page.$eval('#editor', (el) => getComputedStyle(document.body).backgroundColor), 'rgb(22, 22, 20)');
+    assert.strictEqual(await page.textContent('#themeLabel'), 'Light mode');
     assert.ok(await page.$eval('#sunIcon', (icon) => icon.getBoundingClientRect().width > 0), 'sun icon shows in dark mode');
     assert.strictEqual(await page.$eval('#moonIcon', (icon) => icon.getBoundingClientRect().width), 0);
   });

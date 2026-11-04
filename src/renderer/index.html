@@ -16,13 +16,18 @@
     </button>
     <div id="entryList"></div>
     <div id="credit">
-      <img class="logo logo-dark-ink" src="assets/runon-logo-dark-ink.svg" alt="Runon">
-      <img class="logo logo-light-ink" src="assets/runon-logo-light-ink.svg" alt="Runon">
+      <svg class="logo" viewBox="-1 -15.5 352 71" role="img" aria-label="Runon"><g stroke-width="8.8" transform="translate(0 -22.5) scale(.85)"><path d="M13 78V40C13 28 21 22 33 22C53 22 65 36 87 36"/></g><g stroke-width="7.5" transform="translate(103 0)"><path d="M0 40V12C0 4 6 0 15 0"/><path d="M35 0V24A16 16 0 0 0 67 24M67 0V40"/><path d="M87 40V16A16 16 0 0 1 119 16V40"/><path d="M139 20A20 20 0 1 1 179 20A20 20 0 1 1 139 20Z"/><path d="M199 40V16A16 16 0 0 1 231 16V40"/></g></svg>
       <span>Built by Shah Hassan</span>
     </div>
   </aside>
 
   <main id="main">
+    <header id="topbar">
+      <div id="topLogo" role="img" aria-label="Runon">
+        <svg viewBox="0 0 100 100" class="mark"><path d="M13 78V40C13 28 21 22 33 22C53 22 65 36 87 36"/></svg>
+      </div>
+      <div id="entryDate"></div>
+    </header>
     <textarea id="editor" spellcheck="false" aria-label="Your entry"></textarea>
     <video id="player" controls hidden></video>
 
@@ -91,8 +96,8 @@
             <span id="fullscreenLabel">Fullscreen</span>
           </button>
           <button id="themeBtn" class="row" type="button">
-            <svg viewBox="0 0 16 16" class="icon" id="moonIcon"><path d="M13.6 10.4A6.2 6.2 0 0 1 5.6 2.4a6.2 6.2 0 1 0 8 8z"/></svg>
-            <svg viewBox="0 0 16 16" class="icon" id="sunIcon" hidden><circle cx="8" cy="8" r="3.2"/><path class="stroke" d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6 13 13M13 3l-1.4 1.4M4.4 11.6 3 13"/></svg>
+            <svg viewBox="0 0 16 16" class="icon icon-moon" id="moonIcon"><path d="M13.6 10.4A6.2 6.2 0 0 1 5.6 2.4a6.2 6.2 0 1 0 8 8z"/></svg>
+            <svg viewBox="0 0 16 16" class="icon icon-sun" id="sunIcon"><circle cx="8" cy="8" r="3.2"/><path class="stroke" d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6 13 13M13 3l-1.4 1.4M4.4 11.6 3 13"/></svg>
             <span id="themeLabel">Dark mode</span>
           </button>
         </div>

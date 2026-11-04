@@ -116,10 +116,10 @@ npm run dist
 | `npm run dist` | Builds the Mac and Windows installers (run this on a Mac) |
 | `npm run dist:mac` | Builds the universal Mac `.dmg` |
 | `npm run dist:win` | Builds the Windows installer |
-| `npm test` | Runs the end-to-end tests on a Mac, after `npm run dist:mac` |
+| `npm test` | Runs the end-to-end tests on a Mac |
 | `npm run icon` | Regenerates the app icons from `build/icon.svg` |
 
-The tests drive the packaged Mac app using a temporary folder and a simulated camera, so they don't touch your real entries or your webcam.
+The tests drive the app from source using a temporary folder and a simulated camera, so they don't touch your real entries or your webcam.
 
 Electron is pinned to 45.2.2, which supports macOS 13. Before upgrading it, check that the new version still supports the macOS versions you need. The built app's minimum is listed under `LSMinimumSystemVersion` in its `Info.plist`.
 
