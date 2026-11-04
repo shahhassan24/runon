@@ -10,7 +10,6 @@ const MEDIA_SCHEME = 'runon-media';
 const ENTRY_FILENAME = /^\[[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}\]-\[(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})\]\.md$/;
 const VIDEO_EXTENSIONS = ['mp4', 'webm'];
 const VIDEO_ENTRY_TEXT = 'Video Entry';
-const WELCOME_MARKER = 'Welcome to Runon';
 const CHAT_URLS = {
   chatgpt: 'https://chatgpt.com/?q=',
   claude: 'https://claude.ai/new?q=',
@@ -84,7 +83,6 @@ function describeEntry(filename, content) {
     type: video ? 'video' : 'text',
     previewText: video ? VIDEO_ENTRY_TEXT : previewOf(content),
     hasThumbnail: Boolean(video) && fs.existsSync(path.join(videoDirectory(filename), 'thumbnail.jpg')),
-    isWelcome: content.includes(WELCOME_MARKER),
   };
 }
 
@@ -206,11 +204,10 @@ function registerIpc() {
     return { entries, folder: dataDir() };
   });
 
-  ipcMain.handle('entries:create', (_event, { withWelcome }) => {
+  ipcMain.handle('entries:create', () => {
     const filename = newFilename();
-    const text = withWelcome ? fs.readFileSync(path.join(__dirname, 'welcome.md'), 'utf8') : '';
-    writeAtomic(entryPath(filename), text);
-    return { entry: describeEntry(filename, text), text };
+    writeAtomic(entryPath(filename), '');
+    return describeEntry(filename, '');
   });
 
   ipcMain.handle('entries:read', (_event, filename) => (

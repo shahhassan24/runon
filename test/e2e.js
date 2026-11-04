@@ -60,15 +60,17 @@ const newest = () => mdFiles().map((name) => path.join(dataDir, name)).sort((a, 
   let errors;
   ({ app, page, errors } = await launch());
 
-  await step('first launch shows the welcome entry', async () => {
-    assert.match(await page.inputValue('#editor'), /^Hi\. Welcome to Runon/);
+  await step('first launch shows the welcome guide', async () => {
+    assert.ok(await page.isVisible('#guide'));
+    assert.match(await page.textContent('#guide h1'), /Begin anywhere/);
+    assert.strictEqual(await page.inputValue('#editor'), '', 'the guide is not saved as an entry');
     assert.strictEqual(mdFiles().length, 1);
-    assert.strictEqual(await page.$eval('#editor', (el) => el.scrollTop), 0);
     assert.strictEqual(await page.$eval('html', (el) => el.dataset.theme), 'light');
     const profile = await app.evaluate(({ app: electronApp }) => electronApp.getPath('userData'));
     assert.ok(profile.startsWith(profileDir) || profile.includes('runon-profile-'), `isolated profile: ${profile}`);
   });
   await page.screenshot({ path: path.join(shots, '1-welcome.png') });
+  await page.click('#guideClose');
 
   await step('window title and About credit', async () => {
     assert.strictEqual(await app.evaluate(({ app: electronApp }) => electronApp.name), 'Runon');
@@ -183,7 +185,7 @@ const newest = () => mdFiles().map((name) => path.join(dataDir, name)).sort((a, 
     await page.click('[data-font="Literata"]');
     assert.ok(await page.$eval('.logo', (logo) => logo.getBoundingClientRect().height > 0), 'logo shows');
     await page.locator('.entry').nth(1).click();
-    await page.waitForFunction(() => document.getElementById('editor').value.startsWith('Hi. Welcome'));
+    await page.waitForFunction(() => document.getElementById('editor').value === '');
     await page.locator('.entry').nth(0).click();
     await page.waitForFunction(() => document.getElementById('editor').value.startsWith('a real entry'));
   });
@@ -310,6 +312,7 @@ const newest = () => mdFiles().map((name) => path.join(dataDir, name)).sort((a, 
 
   await step('relaunch reopens saved entries and the theme', async () => {
     ({ app, page, errors } = await launch());
+    assert.ok(!(await page.isVisible('#guide')), 'the guide only opens once by itself');
     await page.click('#historyBtn');
     assert.strictEqual(await page.locator('.entry').count(), 3);
     assert.strictEqual(await page.$eval('html', (el) => el.dataset.theme), 'dark');

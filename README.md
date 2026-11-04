@@ -104,7 +104,7 @@ Run the app:
 npm start
 ```
 
-Build the installers. The results go in `dist/`:
+Build the installers. The results go in `dist/`. For each platform's steps, see the [build guide](docs/BUILDING.md):
 
 ```bash
 npm run dist
@@ -129,7 +129,6 @@ Electron is pinned to 45.2.2, which supports macOS 13. Before upgrading it, chec
 src/
 ├── main.js          Files, window, menus, permissions, PDF export
 ├── preload.js       The bridge between the page and main.js
-├── welcome.md       The guide shown on first launch
 └── renderer/        The interface: HTML, CSS, app.js, fonts, and logos
 build/               App icons
 test/e2e.js          End-to-end tests

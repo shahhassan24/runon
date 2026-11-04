@@ -95,6 +95,10 @@
             <svg viewBox="0 0 16 16" class="icon"><path class="stroke" d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg>
             <span id="fullscreenLabel">Fullscreen</span>
           </button>
+          <button id="guideBtn" class="row" type="button">
+            <svg viewBox="0 0 16 16" class="icon"><circle class="stroke" cx="8" cy="8" r="6"/><path class="stroke" d="M6.3 6.3a1.8 1.8 0 1 1 2.6 1.6c-.6.3-.9.7-.9 1.3M8 11.500v.1"/></svg>
+            Welcome guide
+          </button>
           <button id="themeBtn" class="row" type="button">
             <svg viewBox="0 0 16 16" class="icon icon-moon" id="moonIcon"><path d="M13.6 10.4A6.2 6.2 0 0 1 5.6 2.4a6.2 6.2 0 1 0 8 8z"/></svg>
             <svg viewBox="0 0 16 16" class="icon icon-sun" id="sunIcon"><circle cx="8" cy="8" r="3.2"/><path class="stroke" d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6 13 13M13 3l-1.4 1.4M4.4 11.6 3 13"/></svg>
@@ -108,6 +112,23 @@
 
     <div id="runline"><div id="runlineFill"></div></div>
   </main>
+
+  <section id="guide" hidden aria-label="Welcome to Runon">
+    <div class="guide-page">
+      <svg viewBox="0 0 100 100" class="mark guide-mark"><path d="M13 78V40C13 28 21 22 33 22C53 22 65 36 87 36"/></svg>
+      <h1>Begin anywhere. Don’t stop.</h1>
+      <p class="guide-intro">Runon is for freewriting: writing without stopping for a set time. Don’t fix your spelling or go back. Keep going, and you’ll find out what you actually think.</p>
+      <ol>
+        <li><strong>Pick something to write about.</strong> A decision, a problem at work, a new idea.</li>
+        <li><strong>Set the timer.</strong> Click the time at the bottom, choose how long, and click Start.</li>
+        <li><strong>Keep writing.</strong> The controls fade and a line grows across the screen. When the controls come back, you’re done.</li>
+      </ol>
+      <p class="guide-note">Want to make going back impossible? Turn Backspace off in Menu.</p>
+      <p class="guide-note">Your writing stays on your computer, in Documents/Runon. It only leaves if you choose to send it through Chat.</p>
+      <button id="guideClose" type="button">Start writing</button>
+      <p class="guide-credit">Built by Shah Hassan. Based on Freewrite by Farza Majeed.</p>
+    </div>
+  </section>
 
   <section id="recorder" hidden>
     <video id="preview" autoplay muted playsinline></video>

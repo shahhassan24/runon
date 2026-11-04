@@ -20,7 +20,6 @@ const MAX_CHAT_URL = 6000;
 const SAVE_DELAY = 150;
 const THEME_FADE = 500;
 const MIN_CHAT_LENGTH = 350;
-const WELCOME_PREFIX = 'Hi. Welcome to Runon';
 
 const state = {
   entries: [],
@@ -78,20 +77,18 @@ async function selectEntry(entry) {
   } else {
     stopPlayer();
     editor.hidden = false;
-    showText(await api.readEntry(entry.filename), entry.isWelcome);
+    showText(await api.readEntry(entry.filename));
   }
   updateModeControls();
   renderEntries();
 }
 
-// The welcome guide is read from the top; everything else continues from the end.
-function showText(text, startAtTop) {
+function showText(text) {
   editor.value = text;
   editor.placeholder = PLACEHOLDER;
-  const caret = startAtTop ? 0 : text.length;
-  editor.setSelectionRange(caret, caret);
+  editor.setSelectionRange(text.length, text.length);
   editor.focus();
-  editor.scrollTop = startAtTop ? 0 : editor.scrollHeight;
+  editor.scrollTop = editor.scrollHeight;
 }
 
 function stopPlayer() {
@@ -103,12 +100,12 @@ function stopPlayer() {
 
 async function createEntry() {
   flushSave();
-  const { entry, text } = await api.createEntry({ withWelcome: state.entries.length === 0 });
+  const entry = await api.createEntry();
   state.entries.unshift(entry);
   state.selected = entry;
   stopPlayer();
   editor.hidden = false;
-  showText(text, entry.isWelcome);
+  showText('');
   updateModeControls();
   renderEntries();
 }
@@ -147,10 +144,9 @@ async function loadEntries() {
   $('historyPath').textContent = folder;
 
   const latest = entries[0];
-  const onlyWelcome = entries.length === 1 && latest.isWelcome;
   const emptyToday = entries.find((entry) => isToday(entry) && entry.type === 'text' && entry.previewText === '');
 
-  if (!latest || latest.type === 'video' || (!entries.some(isToday) && !onlyWelcome)) {
+  if (!latest || latest.type === 'video' || !entries.some(isToday)) {
     await createEntry();
   } else {
     await selectEntry(emptyToday || latest);
@@ -432,8 +428,6 @@ function openChatPopover() {
       popoverText("Hey, your entry is quite long. Click Copy Prompt, then paste it into the AI of your choice. The prompt includes your entry."),
       copyButton(),
     );
-  } else if (text.startsWith(WELCOME_PREFIX)) {
-    popover.replaceChildren(popoverText('That one is the welcome guide. Please write your own entry first.'));
   } else if (editor.value.length < MIN_CHAT_LENGTH) {
     popover.replaceChildren(popoverText('Please free write for at minimum 5 minutes first. Then click this. Trust.'));
   } else {
@@ -650,6 +644,20 @@ async function toggleRecording() {
   }
 }
 
+/* ---------- Welcome guide ---------- */
+
+function openGuide() {
+  closePopovers();
+  $('guide').hidden = false;
+  $('guideClose').focus();
+}
+
+function closeGuide() {
+  $('guide').hidden = true;
+  localStorage.setItem('guideSeen', 'true');
+  if (!isVideoSelected()) editor.focus();
+}
+
 /* ---------- Wiring ---------- */
 
 function wireControls() {
@@ -741,9 +749,13 @@ function wireControls() {
     if (!event.target.closest('.anchor')) closePopovers();
   });
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') closePopovers();
+    if (event.key !== 'Escape') return;
+    closePopovers();
+    if (!$('guide').hidden) closeGuide();
   });
 
+  $('guideBtn').addEventListener('click', openGuide);
+  $('guideClose').addEventListener('click', closeGuide);
   $('recorderToggle').addEventListener('click', toggleRecording);
   $('recorderClose').addEventListener('click', cancelRecorder);
 
@@ -766,4 +778,8 @@ applyTheme(localStorage.getItem('colorScheme') === 'dark' ? 'dark' : 'light');
 applyFont();
 renderTimer();
 wireControls();
-loadEntries().catch((error) => console.error('Could not load entries:', error));
+loadEntries()
+  .then(() => {
+    if (!localStorage.getItem('guideSeen')) openGuide();
+  })
+  .catch((error) => console.error('Could not load entries:', error));
