@@ -8,17 +8,20 @@
     const preview = content.replace(/\n/g, ' ').trim();
     return preview.length > 30 ? `${preview.slice(0, 30)}...` : preview;
   };
+  const thumbOf = (content) => content.trim().slice(0, 400);
   const timestampOf = (filename) => {
     const m = filename.match(/\]-\[(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})\]\.md$/);
     return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
   };
-  const describe = (filename, content) => {
+  const describe = (filename, content, folder = null) => {
     const timestamp = timestampOf(filename);
     return {
       filename,
+      folder,
       timestamp: timestamp.getTime(),
       displayDate: timestamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       previewText: previewOf(content),
+      thumbText: thumbOf(content),
       words: countWords(content),
     };
   };
@@ -30,6 +33,14 @@
     return pendingWrites;
   };
 
+  // Moving and renaming wait their turn too, so a save never races a move.
+  const inOrder = (command, args) => {
+    const run = pendingWrites.catch(() => {}).then(() => invoke(command, args));
+    pendingWrites = run.catch(() => {});
+    return run;
+  };
+  const moveEntry = (filename, folder) => inOrder('move_entry', { filename, folder });
+
   const MAX_SEARCH_RESULTS = 100;
   const CHAT_URLS = { chatgpt: 'https://chatgpt.com/?q=', claude: 'https://claude.ai/new?q=' };
 
@@ -39,16 +50,30 @@
     listEntries: async () => {
       const raw = await invoke('list_entries');
       const entries = raw
-        .map(({ filename, content }) => describe(filename, content))
+        .map(({ filename, content, folder }) => describe(filename, content, folder))
         .sort((a, b) => (b.timestamp - a.timestamp) || b.filename.localeCompare(a.filename));
-      return { entries, folder: await invoke('folder') };
+      return { entries, folders: await invoke('list_folders'), folder: await invoke('folder') };
     },
-    createEntry: async () => {
+    createFolder: (name) => inOrder('create_folder', { name }),
+    renameFolder: (name, newName) => inOrder('rename_folder', { name, newName }),
+    deleteFolder: (name) => inOrder('delete_folder', { name }),
+    moveFolder: (name, into) => inOrder('move_folder', { name, into }),
+    moveEntry,
+    createEntry: async (folder = null) => {
       const now = new Date();
       const stamp = [now.getFullYear(), pad(now.getMonth() + 1), pad(now.getDate()), pad(now.getHours()), pad(now.getMinutes()), pad(now.getSeconds())].join('-');
       const filename = `[${crypto.randomUUID().toUpperCase()}]-[${stamp}].md`;
       await write(filename, '');
-      return describe(filename, '');
+      if (folder) {
+        // If the folder has gone, the entry stays at the top instead of getting lost.
+        try {
+          await moveEntry(filename, folder);
+        } catch (error) {
+          console.error('Could not put the new entry in its folder:', error);
+          return describe(filename, '');
+        }
+      }
+      return describe(filename, '', folder);
     },
     readEntry: async (filename) => (await invoke('read_entry', { filename })).replace(/^\n+/, ''),
     saveEntry: (filename, text) => {
@@ -57,7 +82,7 @@
         pendingWrites = Promise.resolve();
         window.dispatchEvent(new Event('runon-save-failed'));
       });
-      return { previewText: previewOf(text), words: countWords(text) };
+      return { previewText: previewOf(text), thumbText: thumbOf(text), words: countWords(text) };
     },
     searchEntries: async (query) => {
       const pattern = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'iu');

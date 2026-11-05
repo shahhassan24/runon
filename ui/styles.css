@@ -11,6 +11,7 @@
   --hair: #e4e2da;
   --card: #f3f2ec;
   --card2: #ebe9e1;
+  --page: #ffffff;
   --rec: #b3321f;
   --frame: #1d1c1a;
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.14);
@@ -26,6 +27,7 @@
   --hair: #2c2b28;
   --card: #1e1e1b;
   --card2: #272623;
+  --page: #262623;
   --rec: #e8745f;
   --frame: #10100f;
   --shadow: 0 18px 48px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
@@ -110,7 +112,10 @@ button:focus-visible { outline: 1.5px solid var(--ink3); outline-offset: 2px; bo
   height: 32px;
   border-radius: 9px;
   background: var(--card);
+  /* Sits above the window's drag strip, so the whole button can be clicked. */
+  z-index: 6;
 }
+#topLogo:hover { background: var(--card2); }
 #topLogo .mark { width: 20px; height: 20px; }
 /* Leaves room for the Mac window buttons, which sit in this corner. */
 [data-platform="darwin"]:not(.fullscreen) #sidebar[hidden] + #main #topLogo { left: 84px; }
@@ -269,63 +274,124 @@ button:focus-visible { outline: 1.5px solid var(--ink3); outline-offset: 2px; bo
   width: 260px;
   border-right: 1px solid var(--hair);
 }
-#historyHeader { display: flex; flex-direction: column; gap: 3px; padding: 44px 20px 14px; }
+#historyHeader { display: flex; flex-direction: column; gap: 3px; padding: 44px 20px 14px; border-bottom: 1px solid var(--hair); }
 [data-platform="win32"] #historyHeader { padding-top: 16px; }
 .history-title { font-size: 13px; font-weight: 600; }
 .history-path { overflow: hidden; color: var(--ink3); font-size: 10px; text-overflow: ellipsis; }
 #historyHeader:hover .history-path { color: var(--ink); }
 
-#activity { padding: 0 0 12px; border-bottom: 1px solid var(--hair); }
-#activityScroller { overflow-x: auto; margin: 0 20px; }
-.activity-months { position: relative; width: 530px; height: 14px; color: var(--ink3); font-size: 10px; }
-.activity-months span { position: absolute; }
-.activity-grid { display: grid; grid-template-rows: repeat(7, 8px); grid-auto-flow: column; grid-auto-columns: 8px; gap: 2px; width: 530px; }
-.activity-grid div { border-radius: 2px; background: var(--hair); }
-.activity-grid [data-level="1"] { background: color-mix(in srgb, var(--ink) 30%, var(--hair)); }
-.activity-grid [data-level="2"] { background: color-mix(in srgb, var(--ink) 50%, var(--hair)); }
-.activity-grid [data-level="3"] { background: color-mix(in srgb, var(--ink) 75%, var(--hair)); }
-.activity-grid [data-level="4"] { background: var(--ink); }
-#activitySummary { margin: 8px 20px 0; color: var(--ink3); font-size: 11px; }
 
 #entryList { flex: 1; min-height: 0; overflow-y: auto; padding: 0 12px 16px 20px; }
 
 .day-label { margin: 12px 0 6px; color: var(--ink3); font-size: 11px; font-weight: 600; }
-.day-entries { margin-left: 3px; border-left: 1.5px solid var(--hair); }
+.entry-time { margin-top: 2px; color: var(--ink3); font-size: 11px; }
+
+/* Files and folders share one grid, like a Finder window in icon view. */
+.file-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 2px; }
 
 .entry {
   position: relative;
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin-left: 12px;
-  padding: 7px 8px;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  padding: 7px 3px 6px;
   border-radius: 8px;
   cursor: pointer;
 }
-.entry::before {
-  content: "";
-  position: absolute;
-  top: 13px;
-  left: -16px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--paper);
-  box-shadow: inset 0 0 0 1.5px var(--ink3);
-}
 .entry:hover { background: var(--card2); }
-.entry.selected { background: var(--card2); }
-.entry.selected .entry-preview { color: var(--ink); }
-.entry.selected::before { background: var(--ink); box-shadow: none; }
-.entry-body { flex: 1; min-width: 0; }
-.entry-top { display: flex; align-items: center; gap: 6px; }
-.entry-preview { color: var(--ink2); flex: 1; min-width: 0; min-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.entry-time { margin-top: 2px; color: var(--ink3); font-size: 11px; }
+.entry.dragging, .folder.dragging { opacity: 0.5; }
+.entry-page {
+  flex: none;
+  width: 40px;
+  height: 50px;
+  margin-bottom: 4px;
+  padding: 5px 4px;
+  overflow: hidden;
+  border: 1px solid var(--hair);
+  border-radius: 3px;
+  background: var(--page);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  pointer-events: none;
+}
+.entry-page-text { color: var(--ink2); font-family: var(--editor-font); font-size: 4px; line-height: 1.35; overflow-wrap: anywhere; white-space: pre-wrap; }
+.entry > .entry-preview {
+  display: -webkit-box;
+  max-width: 100%;
+  padding: 1px 4px;
+  overflow: hidden;
+  border-radius: 4px;
+  color: var(--ink2);
+  font-size: 11px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  text-align: center;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  pointer-events: none;
+}
+.entry > .entry-time { margin-top: 1px; font-size: 10px; text-align: center; pointer-events: none; }
+/* Selected like Finder: a soft box behind the page, and the name in blue. */
+.entry.selected .entry-page { outline: 3px solid var(--card2); }
+.entry.selected > .entry-preview { background: #2f6fde; color: #fff; }
+
 .entry-actions { display: none; flex: none; gap: 8px; color: var(--ink3); }
-.entry:hover .entry-actions { display: flex; }
+.entry > .entry-actions {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  z-index: 1;
+  gap: 1px;
+  padding: 2px;
+  border-radius: 6px;
+  background: var(--card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+.entry:hover > .entry-actions { display: flex; }
+.entry > .entry-actions button { padding: 2px; border-radius: 4px; }
 .entry-actions button:hover { color: var(--ink); }
 .entry-actions .icon { width: 12px; height: 12px; }
 .entry-actions .trash:hover { color: var(--rec); }
+
+/* Folders */
+
+.folders-head { display: flex; align-items: center; justify-content: space-between; }
+.new-folder { padding: 3px; border-radius: 6px; color: var(--ink3); margin-top: 6px; }
+.new-folder:hover { background: var(--card2); color: var(--ink); }
+.new-folder .icon { width: 12px; height: 12px; }
+.folder { display: flex; flex-direction: column; align-items: center; min-width: 0; padding: 7px 3px 6px; border-radius: 8px; }
+.folder[role="button"] { cursor: pointer; }
+.folder[role="button"]:hover { background: var(--card2); }
+.folder:focus-visible { outline: 1.5px solid var(--ink3); }
+.folder-icon { flex: none; display: block; width: 50px; height: 41px; }
+.folder > .folder-icon { margin: 9px 0 4px; }
+/* Keeps a drag from flickering as it crosses the icon and the name. */
+.folder > .folder-icon, .folder > .folder-name { pointer-events: none; }
+.folder > .folder-name { display: -webkit-box; max-width: 100%; overflow: hidden; color: var(--ink2); font-size: 11px; line-height: 1.25; overflow-wrap: anywhere; text-align: center; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.folder-input { width: 100%; min-width: 0; padding: 1px 3px; border: 1px solid #4fa9ee; border-radius: 4px; outline: 0; background: var(--paper); color: var(--ink); font: inherit; font-size: 11px; text-align: center; }
+.folder-input.invalid { border-color: var(--rec); }
+.drop-target { background: color-mix(in srgb, #4fa9ee 25%, transparent) !important; border-radius: 8px; }
+
+.folder-head { position: sticky; top: 0; z-index: 1; margin-right: -4px; padding: 10px 0 4px; background: var(--paper); }
+.folder-back { display: inline-flex; align-items: center; gap: 3px; margin-left: -4px; padding: 3px 8px 3px 3px; border-radius: 6px; color: var(--ink3); font-size: 12px; }
+.folder-back:hover { background: var(--card2); color: var(--ink); }
+.folder-title { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.folder-title .folder-icon { width: 30px; height: 25px; }
+.folder-title .folder-name { flex: 1; min-width: 0; overflow: hidden; font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.folder-title .folder-input { flex: 1; font-size: 13px; text-align: left; }
+.folder-title .entry-actions { display: flex; }
+.folder-confirm { margin-top: 10px; padding: 10px; border: 1px solid var(--hair); border-radius: 10px; background: var(--card); }
+.folder-confirm p { margin: 0 0 9px; color: var(--ink2); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+.folder-confirm-buttons { display: flex; justify-content: flex-end; gap: 6px; }
+.folder-confirm-buttons button { padding: 4px 10px; border-radius: 999px; color: var(--ink2); font-size: 12px; }
+.folder-confirm-buttons button:hover { background: var(--card2); color: var(--ink); }
+.folder-confirm-buttons .danger { background: var(--rec); color: #fff; }
+.folder-confirm-buttons .danger:hover { background: var(--rec); color: #fff; opacity: 0.85; }
+.folder-notice { margin: 10px 0 0; color: var(--rec); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+.folder-empty { margin-top: 14px; color: var(--ink3); font-size: 12px; line-height: 1.5; }
+
+#movePopover { position: fixed; right: auto; bottom: auto; z-index: 10; width: 190px; max-height: 260px; }
+#movePopover button { overflow-wrap: anywhere; }
 
 #credit { padding: 12px 20px; border-top: 1px solid var(--hair); color: var(--ink3); font-size: 10px; }
 .logo { display: block; height: 17px; margin-bottom: 5px; fill: none; stroke: var(--ink); stroke-linecap: round; stroke-linejoin: round; }

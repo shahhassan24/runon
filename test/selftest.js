@@ -202,12 +202,24 @@
     await until(() => editor.value === 'second entry text', 'second');
     assert($('credit').textContent.includes('Built by Shah Hassan'), 'credit'); assert(visible(document.querySelector('.logo')), 'logo');
   });
-  await check('year chart covers a full year and shows today', async () => {
-    const cells = document.querySelectorAll('.activity-grid > div'); assert(cells.length >= 365, `${cells.length}`);
-    assert($('activityScroller').scrollLeft > 0, 'not at newest');
-    assert(/\d+ days? written/.test($('activitySummary').textContent), 'summary');
-    assert([...cells].some((c) => Number(c.dataset.level) > 0), 'no written day');
-    return $('activitySummary').textContent;
+  await check('folders: entries and folders move on disk, and deleting keeps the writing', async () => {
+    const entry = state.selected;
+    const top = await makeFolder(null);
+    await renameFolder(top, 'Selftest');
+    const inner = await makeFolder('Selftest');
+    await renameFolder(inner, 'Inner');
+    await moveEntry(entry, 'Selftest/Inner');
+    type(' filed away'); await saved(editor.value);
+    let listed = await api.listEntries();
+    assert(listed.folders.includes('Selftest/Inner'), 'nested folder not listed');
+    equal(listed.entries.find((e) => e.filename === entry.filename).folder, 'Selftest/Inner', 'entry folder');
+    await renameFolder('Selftest', 'Selftest Renamed');
+    equal(entry.folder, 'Selftest Renamed/Inner', 'path after rename');
+    await deleteFolder('Selftest Renamed');
+    listed = await api.listEntries();
+    assert(!listed.folders.some((f) => f.startsWith('Selftest')), 'folder still there');
+    equal(listed.entries.find((e) => e.filename === entry.filename).folder, null, 'entry not moved to the top');
+    equal(await onDisk(), editor.value, 'writing kept');
   });
   const searchFor = async (text) => { $('search').value = text; await runSearch(); };
   await check('Cmd+F opens the floating search, and again closes it', async () => {

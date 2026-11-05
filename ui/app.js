@@ -22,10 +22,11 @@ const SAVE_RETRY_DELAY = 2000;
 const IDLE_AFTER = 5000;
 const SUMMARY_TIME = 30000;
 const SEARCH_DELAY = 150;
-const ACTIVITY_LEVELS = [1, 100, 300, 700];
-const ACTIVITY_WEEK_WIDTH = 10;
 const THEME_FADE = 500;
 const MIN_CHAT_LENGTH = 350;
+const PLUS_OUTLINE = '<path class="stroke" d="M8 3v10M3 8h10"/>';
+const TRASH_OUTLINE ='<path class="stroke" d="M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.5h6.6L12 4"/>';
+const FOLDER_OUTLINE = '<path class="stroke" d="M2 4.500V12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.500 3.500H3a1 1 0 0 0-1 1z"/>';
 
 const state = {
   entries: [],
@@ -43,6 +44,13 @@ const state = {
   backspaceDisabled: false,
   activeResult: 0,
   searchResults: [],
+  folders: [],
+  openFolder: null,
+  renamingFolder: null,
+  confirmingDelete: null,
+  folderNotice: null,
+  dragged: null,
+  moving: null,
 };
 
 const editor = $('editor');
@@ -57,7 +65,7 @@ function flushSave() {
   if (!state.dirty || !state.selected) return;
   state.dirty = false;
   Object.assign(state.selected, api.saveEntry(state.selected.filename, editor.value));
-  renderEntries();
+  refreshEntry(state.selected);
 }
 
 function scheduleSave() {
@@ -101,7 +109,7 @@ function showText(text) {
 async function createEntry() {
   flushSave();
   settleSession();
-  const entry = await api.createEntry();
+  const entry = await api.createEntry($('sidebar').hidden ? null : state.openFolder);
   state.entries.unshift(entry);
   state.selected = entry;
   beginSessionEntry();
@@ -139,8 +147,9 @@ async function exportEntry(entry) {
 const isToday = (entry) => new Date(entry.timestamp).toDateString() === new Date().toDateString();
 
 async function loadEntries() {
-  const { entries, folder } = await api.listEntries();
+  const { entries, folders, folder } = await api.listEntries();
   state.entries = entries;
+  state.folders = sortedFolders(folders);
   $('historyPath').textContent = folder;
 
   const latest = entries[0];
@@ -180,11 +189,32 @@ function dayLabel(entry) {
   return entry.displayDate;
 }
 
+function entryCaption(entry) {
+  const label = dayLabel(entry);
+  if (label !== 'Today') return label;
+  return new Date(entry.timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+// After a save only the words change, so the tile is updated in place instead of redrawing History.
+function refreshEntry(entry) {
+  if ($('sidebar').hidden) return;
+  const row = [...document.querySelectorAll('#entryList .entry')].find((tile) => tile.dataset.filename === entry.filename);
+  if (!row) return;
+  row.querySelector('.entry-preview').textContent = entry.previewText || 'Empty entry';
+  row.querySelector('.entry-page-text').textContent = entry.thumbText || '';
+}
+
+// Shown like a file in Finder: a page with the start of the writing on it, and its name below.
 function renderEntry(entry) {
   const row = document.createElement('div');
   row.className = `entry${entry === state.selected ? ' selected' : ''}`;
+  row.dataset.filename = entry.filename;
   row.tabIndex = 0;
   row.setAttribute('role', 'button');
+  row.title = `${entry.previewText || 'Empty entry'}\n${new Date(entry.timestamp).toLocaleString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+  })}`;
+  startDrag(row, 'application/x-runon-entry', entry.filename, { entry });
   row.addEventListener('click', () => {
     if (entry !== state.selected) selectEntry(entry);
   });
@@ -192,102 +222,405 @@ function renderEntry(entry) {
     if (event.key === 'Enter' && event.target === row && entry !== state.selected) selectEntry(entry);
   });
 
-  const body = document.createElement('div');
-  body.className = 'entry-body';
-  const top = document.createElement('div');
-  top.className = 'entry-top';
+  const page = document.createElement('div');
+  page.className = 'entry-page';
+  const pageText = document.createElement('div');
+  pageText.className = 'entry-page-text';
+  pageText.textContent = entry.thumbText || '';
+  page.append(pageText);
+
   const preview = document.createElement('div');
   preview.className = 'entry-preview';
   preview.textContent = entry.previewText || 'Empty entry';
-  const actions = document.createElement('div');
-  actions.className = 'entry-actions';
-  actions.append(actionButton(
-    'export',
-    'Export entry as PDF',
-    '<path class="stroke" d="M8 2v8M4.5 7 8 10.5 11.5 7M3 14h10"/>',
-    () => exportEntry(entry),
-  ));
-  actions.append(actionButton(
-    'trash',
-    'Delete entry',
-    '<path class="stroke" d="M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.5h6.6L12 4"/>',
-    () => deleteEntry(entry),
-  ));
-  top.append(preview, actions);
   const time = document.createElement('div');
   time.className = 'entry-time';
-  time.textContent = new Date(entry.timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  body.append(top, time);
-  row.append(body);
+  time.textContent = entryCaption(entry);
+
+  const actions = document.createElement('div');
+  actions.className = 'entry-actions';
+  const moveButton = actionButton(
+    'move',
+    'Move to folder',
+    FOLDER_OUTLINE,
+    () => openMoveMenu(entry, moveButton),
+  );
+  actions.append(
+    moveButton,
+    actionButton('export', 'Export entry as PDF', '<path class="stroke" d="M8 2v8M4.5 7 8 10.5 11.5 7M3 14h10"/>', () => exportEntry(entry)),
+    actionButton('trash', 'Delete entry', TRASH_OUTLINE, () => deleteEntry(entry)),
+  );
+  row.append(actions, page, preview, time);
   return row;
 }
 
-function activityTitle(date, words) {
-  const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  return `${words ? `${words} word${words === 1 ? '' : 's'}` : 'Nothing written'} on ${label}`;
+/* ---------- Folders ---------- */
+
+// A folder is known by its path from the top, like "Work/Ideas". null is the top itself.
+const parentOf = (path) => (path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : null);
+const leafOf = (path) => path.slice(path.lastIndexOf('/') + 1);
+const joinPath = (parent, name) => (parent === null ? name : `${parent}/${name}`);
+const isWithin = (path, ancestor) => path === ancestor || path.startsWith(`${ancestor}/`);
+const repath = (path, from, to) => (path !== null && isWithin(path, from) ? to + path.slice(from.length) : path);
+const childFolders = (parent) => state.folders.filter((path) => parentOf(path) === parent);
+const plural = (count, one, many) => `${count} ${count === 1 ? one : many}`;
+const FOLDER_PLUS = '<path class="stroke" d="M2 4.500V12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.500 3.500H3a1 1 0 0 0-1 1zM8 7v4M6 9h4"/>';
+
+function sortedFolders(paths) {
+  return [...paths].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true }));
 }
 
-function renderActivity() {
-  const days = new Map();
-  state.entries.forEach((entry) => {
-    const key = new Date(entry.timestamp).toDateString();
-    days.set(key, (days.get(key) || 0) + entry.words);
-  });
+function folderIcon() {
+  const template = document.createElement('template');
+  template.innerHTML = `<svg viewBox="0 0 64 52" class="folder-icon" aria-hidden="true">
+    <defs><linearGradient id="folderFront" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#84cdfa"/><stop offset="1" stop-color="#4fa9ee"/>
+    </linearGradient></defs>
+    <path fill="#3f97e0" d="M4 9a5 5 0 0 1 5-5h13.600c1.500 0 2.900.6 4 1.700L30 9h25a5 5 0 0 1 5 5v28a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/>
+    <path fill="url(#folderFront)" d="M4 20a5 5 0 0 1 5-5h46a5 5 0 0 1 5 5v22a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/>
+    <path fill="none" stroke="#fff" stroke-opacity=".45" d="M9 15.600h46"/>
+  </svg>`;
+  return template.content.firstChild;
+}
 
-  const today = new Date();
-  const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 52 * 7 - today.getDay());
-  const grid = document.createElement('div');
-  grid.className = 'activity-grid';
-  const months = document.createElement('div');
-  months.className = 'activity-months';
-  let daysWritten = 0;
-  let week = 0;
-  let labelledMonth = date.getDate() > 7 ? date.getMonth() : null;
+function showFolder(path) {
+  closePopovers();
+  state.openFolder = path;
+  state.confirmingDelete = null;
+  state.folderNotice = null;
+  renderEntries();
+  $('entryList').scrollTop = 0;
+}
 
-  while (date <= today) {
-    const words = days.get(date.toDateString()) || 0;
-    const cell = document.createElement('div');
-    cell.dataset.level = ACTIVITY_LEVELS.filter((minimum) => words >= minimum).length;
-    cell.title = activityTitle(date, words);
-    grid.append(cell);
-    if (date >= new Date(today.getFullYear() - 1, today.getMonth(), today.getDate()) && Number(cell.dataset.level) > 0) daysWritten += 1;
-    if (date.getDay() === 0 && date.getMonth() !== labelledMonth) {
-      labelledMonth = date.getMonth();
-      const label = document.createElement('span');
-      label.textContent = date.toLocaleDateString('en-US', { month: 'short' });
-      label.style.left = `${week * ACTIVITY_WEEK_WIDTH}px`;
-      months.append(label);
-    }
-    if (date.getDay() === 6) week += 1;
-    date.setDate(date.getDate() + 1);
+// Keeps every remembered path right after a folder moves or is renamed.
+function folderMoved(from, to) {
+  state.folders = sortedFolders(state.folders.map((path) => repath(path, from, to)));
+  state.entries.forEach((entry) => { entry.folder = repath(entry.folder, from, to); });
+  state.openFolder = repath(state.openFolder, from, to);
+}
+
+async function moveEntry(entry, folder) {
+  if (entry.folder === folder) return;
+  try {
+    await api.moveEntry(entry.filename, folder);
+    entry.folder = folder;
+    renderEntries();
+  } catch (error) {
+    console.error('Could not move entry:', error);
   }
+}
 
-  const scroller = $('activityScroller');
-  const previous = scroller.scrollLeft;
-  scroller.replaceChildren(months, grid);
-  scroller.scrollLeft = previous || scroller.scrollWidth;
-  $('activitySummary').textContent = `${daysWritten} day${daysWritten === 1 ? '' : 's'} written in the past year`;
+async function moveFolder(path, into) {
+  if (into !== null && isWithin(into, path)) return;
+  if (parentOf(path) === into) return;
+  try {
+    await api.moveFolder(path, into);
+    folderMoved(path, joinPath(into, leafOf(path)));
+    renderEntries();
+  } catch (error) {
+    console.error('Could not move folder:', error);
+  }
+}
+
+async function makeFolder(parent) {
+  flushSave();
+  const taken = new Set(childFolders(parent).map((path) => leafOf(path).toLowerCase()));
+  let name = 'New Folder';
+  for (let number = 2; taken.has(name.toLowerCase()); number += 1) name = `New Folder ${number}`;
+  const path = joinPath(parent, name);
+  await api.createFolder(path);
+  state.folders = sortedFolders([...state.folders, path]);
+  return path;
+}
+
+function startRenaming(path) {
+  flushSave();
+  state.renamingFolder = path;
+  renderEntries();
+}
+
+async function addFolder() {
+  try {
+    startRenaming(await makeFolder(state.openFolder));
+  } catch (error) {
+    console.error('Could not create folder:', error);
+  }
+}
+
+async function renameFolder(path, newName) {
+  await api.renameFolder(path, newName);
+  folderMoved(path, joinPath(parentOf(path), newName));
+}
+
+// Entries anywhere inside a deleted folder move up into the folder that held it.
+async function deleteFolder(path) {
+  const parent = parentOf(path);
+  state.confirmingDelete = null;
+  try {
+    await api.deleteFolder(path);
+    state.folders = state.folders.filter((folder) => !isWithin(folder, path));
+    state.entries.forEach((entry) => {
+      if (entry.folder !== null && isWithin(entry.folder, path)) entry.folder = parent;
+    });
+    showFolder(parent);
+  } catch (error) {
+    state.folderNotice = String(error);
+    renderEntries();
+  }
+}
+
+function askToDelete(path) {
+  state.confirmingDelete = path;
+  state.folderNotice = null;
+  renderEntries();
+}
+
+function renderDeleteConfirm(path) {
+  const parent = parentOf(path);
+  const box = document.createElement('div');
+  box.className = 'folder-confirm';
+  const text = document.createElement('p');
+  text.textContent = `Delete \u201c${leafOf(path)}\u201d? Everything written in it moves to ${parent === null ? 'History' : `\u201c${leafOf(parent)}\u201d`}.`;
+  const cancel = popoverButton('Cancel', () => {
+    state.confirmingDelete = null;
+    renderEntries();
+  });
+  const remove = popoverButton('Delete Folder', () => deleteFolder(path));
+  remove.className = 'danger';
+  const buttons = document.createElement('div');
+  buttons.className = 'folder-confirm-buttons';
+  buttons.append(cancel, remove);
+  box.append(text, buttons);
+  return box;
+}
+
+function folderNameInput(path) {
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'folder-input';
+  input.value = leafOf(path);
+  input.spellcheck = false;
+  input.setAttribute('aria-label', 'Folder name');
+  let finished = false;
+  const finish = async (save, leaving = false) => {
+    if (finished) return;
+    finished = true;
+    const newName = input.value.trim();
+    if (save && newName && newName !== leafOf(path)) {
+      try {
+        await renameFolder(path, newName);
+      } catch (error) {
+        // Clicking away keeps the old name. Enter stays open so the name can be fixed.
+        finished = false;
+        if (leaving) {
+          finish(false);
+          return;
+        }
+        input.title = String(error);
+        input.classList.add('invalid');
+        input.focus();
+        input.select();
+        return;
+      }
+    }
+    state.renamingFolder = null;
+    renderEntries();
+    editor.focus();
+  };
+  input.addEventListener('click', (event) => event.stopPropagation());
+  input.addEventListener('blur', () => finish(true, true));
+  input.addEventListener('keydown', (event) => {
+    event.stopPropagation();
+    if (event.key === 'Enter') finish(true);
+    else if (event.key === 'Escape') finish(false);
+  });
+  return input;
+}
+
+const DRAG_TYPES = ['application/x-runon-entry', 'application/x-runon-folder'];
+
+function canDropInto(target) {
+  const dragged = state.dragged;
+  if (!dragged) return false;
+  if (dragged.entry) return dragged.entry.folder !== target;
+  return parentOf(dragged.folder) !== target && !(target !== null && isWithin(target, dragged.folder));
+}
+
+// Lets entries and folders be dropped here. null means the top of History.
+function acceptDrops(element, target) {
+  const ours = (event) => [...event.dataTransfer.types].some((type) => DRAG_TYPES.includes(type));
+  element.addEventListener('dragover', (event) => {
+    if (!ours(event) || !canDropInto(target)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    element.classList.add('drop-target');
+  });
+  element.addEventListener('dragleave', () => element.classList.remove('drop-target'));
+  element.addEventListener('drop', (event) => {
+    event.preventDefault();
+    element.classList.remove('drop-target');
+    const dragged = state.dragged;
+    const allowed = canDropInto(target);
+    state.dragged = null;
+    if (!dragged || !allowed) return;
+    if (dragged.entry) moveEntry(dragged.entry, target);
+    else moveFolder(dragged.folder, target);
+  });
+}
+
+function startDrag(element, type, value, dragged) {
+  element.draggable = true;
+  element.addEventListener('dragstart', (event) => {
+    event.stopPropagation();
+    // A private type, so dropping on the page can't paste anything into the writing.
+    event.dataTransfer.setData(type, value);
+    event.dataTransfer.effectAllowed = 'move';
+    state.dragged = dragged;
+    closePopovers();
+    element.classList.add('dragging');
+  });
+  element.addEventListener('dragend', () => {
+    state.dragged = null;
+    element.classList.remove('dragging');
+  });
+}
+
+function folderLabel(name) {
+  const label = document.createElement('div');
+  label.className = 'folder-name';
+  label.textContent = name;
+  return label;
+}
+
+function renderFolder(path) {
+  const tile = document.createElement('div');
+  tile.className = 'folder';
+  tile.append(folderIcon());
+  if (state.renamingFolder === path) {
+    tile.append(folderNameInput(path));
+    return tile;
+  }
+  const folders = childFolders(path).length;
+  const entries = state.entries.filter((entry) => entry.folder === path).length;
+  tile.title = `${leafOf(path)}: ${folders ? `${plural(folders, 'folder', 'folders')}, ` : ''}${plural(entries, 'entry', 'entries')}`;
+  tile.tabIndex = 0;
+  tile.setAttribute('role', 'button');
+  tile.append(folderLabel(leafOf(path)));
+  tile.addEventListener('click', () => showFolder(path));
+  tile.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') showFolder(path);
+  });
+  startDrag(tile, 'application/x-runon-folder', path, { folder: path });
+  acceptDrops(tile, path);
+  return tile;
+}
+
+function renderToolbar() {
+  const head = document.createElement('div');
+  head.className = 'folders-head';
+  const heading = document.createElement('div');
+  heading.className = 'day-label';
+  const loose = state.entries.filter((entry) => entry.folder === null).length;
+  heading.textContent = `${plural(childFolders(null).length, 'folder', 'folders')}, ${plural(loose, 'entry', 'entries')}`;
+  head.append(heading, actionButton('new-folder', 'New folder', PLUS_OUTLINE, addFolder));
+  return head;
+}
+
+function renderFolderHead(path) {
+  const parent = parentOf(path);
+  const head = document.createElement('div');
+  head.className = 'folder-head';
+  const back = document.createElement('button');
+  back.type = 'button';
+  back.className = 'folder-back';
+  back.title = parent === null ? 'Back to History' : `Back to ${parent.split('/').join(' › ')}`;
+  back.append(icon('<path class="stroke" d="M10 3 5 8l5 5"/>'), parent === null ? 'History' : leafOf(parent));
+  back.addEventListener('click', () => showFolder(parent));
+  acceptDrops(back, parent);
+
+  const title = document.createElement('div');
+  title.className = 'folder-title';
+  title.title = path.split('/').join(' › ');
+  title.append(folderIcon());
+  if (state.renamingFolder === path) {
+    title.append(folderNameInput(path));
+  } else {
+    title.append(folderLabel(leafOf(path)));
+    const actions = document.createElement('div');
+    actions.className = 'entry-actions';
+    actions.append(
+      actionButton('new-entry', 'New entry in this folder', PLUS_OUTLINE, createEntry),
+      actionButton('new-folder', 'New folder inside this one', FOLDER_PLUS, addFolder),
+      actionButton('rename', 'Rename folder', '<path class="stroke" d="m3 13 .6-2.600 7-7 2 2-7 7z"/>', () => startRenaming(path)),
+      actionButton('trash', 'Delete folder', TRASH_OUTLINE, () => askToDelete(path)),
+    );
+    title.append(actions);
+  }
+  head.append(back, title);
+  if (state.confirmingDelete === path) head.append(renderDeleteConfirm(path));
+  if (state.folderNotice) {
+    const notice = document.createElement('p');
+    notice.className = 'folder-notice';
+    notice.textContent = state.folderNotice;
+    head.append(notice);
+  }
+  return head;
+}
+
+function openMoveMenu(entry, button) {
+  const menu = $('movePopover');
+  const wasOpen = !menu.hidden && state.moving === entry;
+  closePopovers();
+  if (wasOpen) return;
+  state.moving = entry;
+  const moveTo = (folder) => () => {
+    closePopovers();
+    moveEntry(entry, folder);
+  };
+  const choices = state.folders
+    .filter((path) => path !== entry.folder)
+    .map((path) => popoverButton(path.split('/').join(' › '), moveTo(path)));
+  if (entry.folder !== null) choices.unshift(popoverButton('Back to History', moveTo(null)));
+  choices.push(popoverButton('New Folder', async () => {
+    closePopovers();
+    try {
+      const path = await makeFolder(state.openFolder);
+      await moveEntry(entry, path);
+      startRenaming(path);
+    } catch (error) {
+      console.error('Could not create folder:', error);
+    }
+  }));
+  menu.replaceChildren(...choices);
+  menu.hidden = false;
+  const place = button.getBoundingClientRect();
+  menu.style.left = `${place.left}px`;
+  menu.style.top = `${Math.max(8, Math.min(place.bottom + 6, window.innerHeight - menu.offsetHeight - 8))}px`;
 }
 
 function renderEntries() {
   if ($('sidebar').hidden) return;
-  renderActivity();
-  const groups = [];
-  let currentLabel = null;
-  state.entries.forEach((entry) => {
-    const label = dayLabel(entry);
-    if (label !== currentLabel) {
-      currentLabel = label;
-      const heading = document.createElement('div');
-      heading.className = 'day-label';
-      heading.textContent = label;
-      const entries = document.createElement('div');
-      entries.className = 'day-entries';
-      groups.push(heading, entries);
-    }
-    groups[groups.length - 1].append(renderEntry(entry));
-  });
-  $('entryList').replaceChildren(...groups);
+  const inFolder = state.openFolder !== null;
+  const folders = childFolders(state.openFolder);
+  const entries = state.entries.filter((entry) => entry.folder === state.openFolder);
+  // Like a Finder window: folders first, then files, newest first.
+  const grid = document.createElement('div');
+  grid.className = 'file-grid';
+  grid.append(...folders.map(renderFolder), ...entries.map(renderEntry));
+  const parts = [inFolder ? renderFolderHead(state.openFolder) : renderToolbar()];
+  if (grid.children.length) parts.push(grid);
+  if (inFolder && !grid.children.length) {
+    const empty = document.createElement('div');
+    empty.className = 'folder-empty';
+    empty.textContent = 'Nothing here yet. Use the buttons above to write here or add a folder, or drag something in.';
+    parts.push(empty);
+  }
+  const list = $('entryList');
+  list.replaceChildren(...parts);
+  const nameInput = list.querySelector('.folder-input');
+  if (nameInput) {
+    nameInput.focus();
+    nameInput.select();
+  }
 }
 
 /* ---------- Controls ---------- */
@@ -447,6 +780,7 @@ function closePopovers() {
   $('menu').hidden = true;
   $('timerPanel').hidden = true;
   $('chatPopover').hidden = true;
+  $('movePopover').hidden = true;
 }
 
 function popoverText(text) {
@@ -522,6 +856,8 @@ function highlightedSnippet(snippet, query) {
 async function openSearchResult(filename, query) {
   const entry = state.entries.find((candidate) => candidate.filename === filename);
   if (!entry) return;
+  state.openFolder = entry.folder;
+  renderEntries();
   if (entry !== state.selected) await selectEntry(entry);
   const match = new RegExp(escapeForPattern(query), 'iu').exec(editor.value);
   if (!match) return;
@@ -706,11 +1042,13 @@ function wireControls() {
     $('menu').hidden = !opening;
   });
   $('themeBtn').addEventListener('click', toggleTheme);
-  $('historyBtn').addEventListener('click', () => {
+  const toggleHistory = () => {
     $('sidebar').hidden = !$('sidebar').hidden;
     renderEntries();
     editor.focus();
-  });
+  };
+  $('historyBtn').addEventListener('click', toggleHistory);
+  $('topLogo').addEventListener('click', toggleHistory);
   $('historyHeader').addEventListener('click', () => api.openFolder());
 
   nav.addEventListener('mouseenter', () => setNavVisible(true));
@@ -719,7 +1057,7 @@ function wireControls() {
   });
 
   document.addEventListener('mousedown', (event) => {
-    if (!event.target.closest('.anchor')) closePopovers();
+    if (!event.target.closest('.anchor, #movePopover, .move')) closePopovers();
   });
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
@@ -752,6 +1090,19 @@ function wireControls() {
     document.documentElement.classList.toggle('fullscreen', value);
     $('fullscreenLabel').textContent = value ? 'Exit Fullscreen' : 'Fullscreen';
   });
+
+  // With the native drop handler off, a file dropped on the window would open in place of the app.
+  const isFileDrag = (event) => [...event.dataTransfer.types].includes('Files');
+  document.addEventListener('dragover', (event) => {
+    if (isFileDrag(event)) {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'none';
+    }
+  });
+  document.addEventListener('drop', (event) => {
+    if (isFileDrag(event)) event.preventDefault();
+  });
+  document.addEventListener('dragend', () => { state.dragged = null; });
 
   window.addEventListener('pagehide', flushSave);
   window.addEventListener('runon-save-failed', () => {

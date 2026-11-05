@@ -20,7 +20,7 @@ Most of us edit while we write, and that gets in the way of finding out what we 
 
 Freewriting fixes that with one rule: keep writing for a set time, without going back. Spelling doesn't matter, and neither does whether it's any good. Once you've run through the polished first thoughts, the honest ones start to show up.
 
-Runon is built around that rule. There are no folders, formatting tools, or accounts. You open it and start typing.
+Runon is built around that rule. There are no formatting tools or accounts. You open it and start typing.
 
 ## How it works
 
@@ -40,8 +40,8 @@ Turn **Backspace off** in the menu if you want to make going back impossible.
 - **The line keeps you going:** stop typing during a timed session and the line slowly fades. It comes back as soon as you type.
 - **Session summary:** when the timer ends, Runon shows how much you wrote, like "412 words in 15 minutes".
 - **Search:** press Cmd+F (Ctrl+F on Windows) to open a floating search, like Spotlight. Results appear as you type, and arrow keys and Return open them.
-- **Your year:** a chart in History shows every day you wrote, shaded by how many words.
-- **History:** browse past entries on a timeline grouped by day, export them as PDFs, or move them to the Trash.
+- **History:** browse past entries as files, each showing the start of what you wrote, export them as PDFs, or move them to the Trash.
+- **Folders:** group entries in History, with folders inside folders as deep as you like. Click a folder to see what's inside, and drag an entry or a folder onto another folder to move it.
 - **Chat, if you want it:** after a long session, send an entry to ChatGPT or Claude to talk it through.
 - **Your look:** light and dark themes, several text sizes, and Literata, Arial, System, Times, or a random font from your computer.
 
@@ -55,7 +55,9 @@ Runon has no accounts, server, or analytics. Everything is saved as ordinary fil
 
 ```text
 Documents/Runon/
-└── [id]-[date].md          one file per entry, in plain text
+├── [id]-[date].md          one file per entry, in plain text
+└── Your folder/            one real folder per group you make
+    └── [id]-[date].md
 ```
 
 A few things to know:

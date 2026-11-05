@@ -9,7 +9,8 @@
     "windows": [{
       "label": "main", "title": "Runon",
       "width": 1100, "height": 600, "minWidth": 1100, "minHeight": 600,
-      "titleBarStyle": "Overlay", "hiddenTitle": true
+      "titleBarStyle": "Overlay", "hiddenTitle": true,
+      "dragDropEnabled": false
     }],
     "security": { "csp": null }
   },
