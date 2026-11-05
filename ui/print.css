@@ -1,0 +1,10 @@
+@font-face {
+  font-family: "Literata";
+  src: url("fonts/Literata-Regular.woff2") format("woff2");
+}
+@page { size: letter; margin: 0; }
+html, body { margin: 0; background: #fff; }
+.text { font-variant-ligatures: none; width: 468px; color: rgb(51, 51, 51); white-space: pre-wrap; overflow-wrap: break-word; }
+#measure { position: absolute; visibility: hidden; }
+.page { position: relative; width: 612px; height: 792px; overflow: hidden; break-after: page; background: #fff; }
+.page .text { position: absolute; top: 72px; left: 72px; }

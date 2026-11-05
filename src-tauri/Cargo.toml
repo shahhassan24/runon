@@ -1,0 +1,36 @@
+[package]
+name = "runon"
+version = "1.0.0"
+description = "A distraction-free freewriting app."
+authors = ["Shah Hassan"]
+license = "MIT"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[features]
+# Adds the hooks used by `npm test`. Never enabled in a release.
+selftest = []
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-single-instance = "2"
+serde = { version = "1", features = ["derive"] }
+trash = "5"
+font-kit = "0.14"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = "0.3"
+block2 = "0.6"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

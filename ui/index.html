@@ -3,17 +3,21 @@
 <head>
 <meta charset="utf-8">
 <title>Runon</title>
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' runon-media:; media-src runon-media:">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src ipc: http://ipc.localhost">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div class="drag-strip"></div>
+<div class="drag-strip" data-tauri-drag-region></div>
 <div id="app">
   <aside id="sidebar" hidden>
     <button id="historyHeader" type="button">
       <span class="history-title">History <span aria-hidden="true">↗</span></span>
       <span class="history-path" id="historyPath"></span>
     </button>
+    <div id="activity">
+      <div id="activityScroller"></div>
+      <div id="activitySummary"></div>
+    </div>
     <div id="entryList"></div>
     <div id="credit">
       <svg class="logo" viewBox="-1 -15.5 352 71" role="img" aria-label="Runon"><g stroke-width="8.8" transform="translate(0 -22.5) scale(.85)"><path d="M13 78V40C13 28 21 22 33 22C53 22 65 36 87 36"/></g><g stroke-width="7.5" transform="translate(103 0)"><path d="M0 40V12C0 4 6 0 15 0"/><path d="M35 0V24A16 16 0 0 0 67 24M67 0V40"/><path d="M87 40V16A16 16 0 0 1 119 16V40"/><path d="M139 20A20 20 0 1 1 179 20A20 20 0 1 1 139 20Z"/><path d="M199 40V16A16 16 0 0 1 231 16V40"/></g></svg>
@@ -29,7 +33,6 @@
       <div id="entryDate"></div>
     </header>
     <textarea id="editor" spellcheck="false" aria-label="Your entry"></textarea>
-    <video id="player" controls hidden></video>
 
     <nav id="nav">
       <button id="historyBtn" class="nav-btn" type="button">
@@ -74,14 +77,14 @@
       <div class="anchor">
         <button id="menuBtn" class="nav-btn" type="button">
           <svg viewBox="0 0 100 100" class="mark"><path d="M13 78V40C13 28 21 22 33 22C53 22 65 36 87 36"/></svg>
-          <span class="spinner" hidden></span>
           Menu
         </button>
 
         <div class="popover menu" id="menu" hidden>
-          <button id="videoBtn" class="row" type="button">
-            <svg viewBox="0 0 16 16" class="icon"><rect x="1" y="3.5" width="9.5" height="9" rx="2"/><path d="M11.5 7 15 4.8v6.4L11.5 9z"/></svg>
-            Record a video
+          <button id="searchBtn" class="row" type="button">
+            <svg viewBox="0 0 16 16" class="icon"><circle class="stroke" cx="7" cy="7" r="4.5"/><path class="stroke" d="m10.5 10.5 3 3"/></svg>
+            Search
+            <kbd id="searchHint"></kbd>
           </button>
           <button id="chatBtn" class="row" type="button">
             <svg viewBox="0 0 16 16" class="icon"><path class="stroke" d="M2.5 3.5h11v7.5H7L4 13.5V11H2.5z"/></svg>
@@ -105,13 +108,22 @@
             <span id="themeLabel">Dark mode</span>
           </button>
         </div>
-        <div class="popover" id="videoPopover" hidden></div>
         <div class="popover" id="chatPopover" hidden></div>
       </div>
     </nav>
 
     <div id="runline"><div id="runlineFill"></div></div>
   </main>
+
+  <section id="spotlight" hidden>
+    <div class="spotlight-panel" role="dialog" aria-label="Search all entries">
+      <div class="spotlight-field">
+        <svg viewBox="0 0 16 16" class="icon"><circle class="stroke" cx="7" cy="7" r="4.5"/><path class="stroke" d="m10.5 10.5 3 3"/></svg>
+        <input id="search" type="text" spellcheck="false" autocomplete="off" placeholder="Search everything you've written" aria-label="Search all entries">
+      </div>
+      <div id="searchResults" role="listbox" hidden></div>
+    </div>
+  </section>
 
   <section id="guide" hidden aria-label="Welcome to Runon">
     <div class="guide-page">
@@ -130,18 +142,8 @@
     </div>
   </section>
 
-  <section id="recorder" hidden>
-    <video id="preview" autoplay muted playsinline></video>
-    <div id="recorderNav">
-      <button id="recorderClose" class="nav-btn" type="button">Close</button>
-      <div id="recorderStatus" hidden>
-        <span class="rec-dot"></span><span>Recording</span><span id="recorderTime">0:00</span>
-      </div>
-      <div class="nav-spacer"></div>
-      <button id="recorderToggle" type="button">Start Recording</button>
-    </div>
-  </section>
 </div>
+<script src="bridge.js"></script>
 <script src="prompts.js"></script>
 <script src="app.js"></script>
 </body>

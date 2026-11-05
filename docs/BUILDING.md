@@ -1,38 +1,40 @@
 # Building Runon
 
-How to create and install Runon on each platform. Finished files go in the `dist/` folder, which isn't uploaded to GitHub.
+How to create and install Runon on each platform. Runon is built with [Tauri](https://tauri.app).
 
 ## Before you start
 
-You need [Node.js](https://nodejs.org) 22 and the project's dependencies. Run these from the project folder.
+You need:
 
-If you use nvm, switch to Node 22:
+- [Node.js](https://nodejs.org) 22
+- [Rust](https://www.rust-lang.org/tools/install)
+- **On a Mac:** the Xcode Command Line Tools (`xcode-select --install`)
+- **On Windows:** the [Tauri prerequisites](https://tauri.app/start/prerequisites/)
 
-```bash
-nvm use 22
-```
-
-Install the dependencies. You only need to do this the first time, or after they change:
+Install the project's dependencies from the project folder. You only need to do this the first time, or after they change:
 
 ```bash
 npm install
 ```
 
-To number a new release, change `version` in `package.json` before you build. The version appears in the installer's filename.
+To number a new release, change `version` in both `package.json` and `src-tauri/tauri.conf.json` before you build.
+
+The first build takes several minutes. Later builds are faster.
 
 ## macOS
 
 Run this on a Mac:
 
 ```bash
-npm run dist:mac
+npm run build
 ```
 
 | | |
 | --- | --- |
-| **Installer** | `dist/Runon-<version>-mac-universal.dmg` |
-| **App** | `dist/mac-universal/Runon.app` |
-| **Runs on** | macOS 13 Ventura or newer, on Intel and Apple Silicon |
+| **Installer** | `src-tauri/target/release/bundle/dmg/Runon_<version>_<chip>.dmg` |
+| **Works on** | The same chip as the Mac that built it, on macOS 13 Ventura or newer |
+
+A Mac only builds for its own chip by default. To get one installer that works on both Intel and Apple Silicon, use the GitHub workflow below.
 
 **To install or update:**
 
@@ -42,40 +44,54 @@ npm run dist:mac
 
 ## Windows
 
-Run this on a Mac:
+Windows installers have to be built on Windows, or with the GitHub workflow below. On a Windows PC, run:
 
 ```bash
-npm run dist:win
+npm run build
 ```
-
-We've only created this build on a Mac. The same command may work on a Windows PC, but that hasn't been tried.
 
 | | |
 | --- | --- |
-| **Installer** | `dist/Runon-<version>-windows-setup.exe` |
-| **App without installing** | `dist/win-unpacked/Runon.exe` |
-| **Runs on** | Windows 10 or newer, 64-bit |
+| **Installer** | `src-tauri\target\release\bundle\nsis\Runon_<version>_x64-setup.exe` |
+| **Works on** | Windows 10 or newer, 64-bit |
 
 **To install or update:**
 
 1. Quit Runon if it's open.
-2. Copy the `.exe` to the Windows PC, run it, and follow the steps.
+2. Run the `-setup.exe` and follow the steps.
 
-The Windows version hasn't been installed or run on a real PC yet, so test it before sharing it.
+The Windows version hasn't been run on a real PC yet, so test it before sharing it.
 
-## Both at once
+## Building on GitHub
 
-Run this on a Mac:
+This makes a Windows installer and a universal Mac installer without needing those machines:
+
+1. Push your code to GitHub.
+2. Open the repository's **Actions** tab and choose **Build installers**.
+3. Click **Run workflow**.
+4. When it finishes, download the installers from that run's **Artifacts** section.
+
+The workflow hasn't been run yet, so check its first run.
+
+## Testing
+
+Run the full test suite on a Mac:
 
 ```bash
-npm run dist
+npm test
+```
+
+It runs the real app twice using a temporary folder. It doesn't touch your entries, settings, clipboard, browser, or Trash. It builds a separate test version first, so run `npm run build` again afterwards if you want an installer.
+
+Run the native tests on their own, which works on any platform:
+
+```bash
+cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
 ## Your entries are safe
 
-Updating replaces only the app. Entries stay in `Documents/Runon`, and settings stay in place.
-
-macOS may ask for camera and microphone access again after an update.
+Updating replaces only the app. Entries stay in `Documents/Runon`.
 
 ## Warnings when opening the app
 
@@ -83,6 +99,12 @@ These builds aren't signed with an Apple or Microsoft certificate, so people who
 
 - **macOS:** right-click the app and choose **Open**. If it's still blocked, allow it in **System Settings > Privacy & Security**.
 - **Windows:** on the SmartScreen warning, click **More info**, then **Run anyway**.
+
+## Changing the art
+
+- **App icons:** run `npx tauri icon build/icon.png -o src-tauri/icons`.
+- **Mac installer background:** replace `build/background.png` (720×420).
+- **Windows installer panel:** replace `build/installerSidebar.bmp` (164×314, 24-bit BMP).
 
 ## Other platforms
 

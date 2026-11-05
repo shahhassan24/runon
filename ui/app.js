@@ -18,6 +18,12 @@ const DEFAULT_TIMER = (savedTimerMinutes >= MIN_TIMER_MINUTES && savedTimerMinut
 const SCROLL_STEP = 40;
 const MAX_CHAT_URL = 6000;
 const SAVE_DELAY = 150;
+const SAVE_RETRY_DELAY = 2000;
+const IDLE_AFTER = 5000;
+const SUMMARY_TIME = 30000;
+const SEARCH_DELAY = 150;
+const ACTIVITY_LEVELS = [1, 100, 300, 700];
+const ACTIVITY_WEEK_WIDTH = 10;
 const THEME_FADE = 500;
 const MIN_CHAT_LENGTH = 350;
 
@@ -35,25 +41,22 @@ const state = {
   timerRunning: false,
   scrollBuffer: 0,
   backspaceDisabled: false,
+  activeResult: 0,
+  searchResults: [],
 };
 
 const editor = $('editor');
-const player = $('player');
 const nav = $('nav');
-const isVideoSelected = () => state.selected !== null && state.selected.type === 'video';
 const randomOf = (items) => items[Math.floor(Math.random() * items.length)];
-const mediaUrl = (entry, kind) => `runon-media://entry/${encodeURIComponent(entry.base)}/${kind}`;
 
 /* ---------- Saving ---------- */
 
 function flushSave() {
   clearTimeout(state.saveTimer);
   state.saveTimer = null;
-  if (!state.dirty || !state.selected || state.selected.type !== 'text') return;
-  const preview = api.saveEntrySync(state.selected.filename, editor.value);
-  if (preview === null) return; // Still dirty, so the next save or switch tries again.
+  if (!state.dirty || !state.selected) return;
   state.dirty = false;
-  state.selected.previewText = preview;
+  Object.assign(state.selected, api.saveEntry(state.selected.filename, editor.value));
   renderEntries();
 }
 
@@ -65,21 +68,25 @@ function scheduleSave() {
 
 /* ---------- Entries ---------- */
 
+// Counts words across every entry written during a timed session.
+function settleSession() {
+  if (!state.session || !state.selected) return;
+  state.session.words += state.selected.words - state.session.base;
+  state.session.base = state.selected.words;
+}
+
+function beginSessionEntry() {
+  if (state.session) state.session.base = state.selected.words;
+}
+
 async function selectEntry(entry) {
   flushSave();
+  settleSession();
   state.selected = entry;
-  if (entry.type === 'video') {
-    editor.value = '';
-    editor.hidden = true;
-    player.hidden = false;
-    player.src = mediaUrl(entry, 'video');
-    player.play().catch(() => { /* the viewer can press play */ });
-  } else {
-    stopPlayer();
-    editor.hidden = false;
-    showText(await api.readEntry(entry.filename));
-  }
-  updateModeControls();
+  beginSessionEntry();
+  showText(await api.readEntry(entry.filename));
+  renderEntryDate();
+  closePopovers();
   renderEntries();
 }
 
@@ -91,22 +98,16 @@ function showText(text) {
   editor.scrollTop = editor.scrollHeight;
 }
 
-function stopPlayer() {
-  player.pause();
-  player.removeAttribute('src');
-  player.load();
-  player.hidden = true;
-}
-
 async function createEntry() {
   flushSave();
+  settleSession();
   const entry = await api.createEntry();
   state.entries.unshift(entry);
   state.selected = entry;
-  stopPlayer();
-  editor.hidden = false;
+  beginSessionEntry();
   showText('');
-  updateModeControls();
+  renderEntryDate();
+  closePopovers();
   renderEntries();
 }
 
@@ -114,7 +115,6 @@ async function deleteEntry(entry) {
   if (state.selected === entry) {
     clearTimeout(state.saveTimer);
     state.dirty = false;
-    stopPlayer();
   }
   await api.deleteEntry(entry.filename);
   state.entries = state.entries.filter((candidate) => candidate !== entry);
@@ -144,9 +144,9 @@ async function loadEntries() {
   $('historyPath').textContent = folder;
 
   const latest = entries[0];
-  const emptyToday = entries.find((entry) => isToday(entry) && entry.type === 'text' && entry.previewText === '');
+  const emptyToday = entries.find((entry) => isToday(entry) && entry.previewText === '');
 
-  if (!latest || latest.type === 'video' || !entries.some(isToday)) {
+  if (!latest || !entries.some(isToday)) {
     await createEntry();
   } else {
     await selectEntry(emptyToday || latest);
@@ -192,19 +192,6 @@ function renderEntry(entry) {
     if (event.key === 'Enter' && event.target === row && entry !== state.selected) selectEntry(entry);
   });
 
-  if (entry.type === 'video') {
-    const thumb = document.createElement('div');
-    thumb.className = 'thumb';
-    if (entry.hasThumbnail) {
-      const image = document.createElement('img');
-      image.src = mediaUrl(entry, 'thumbnail');
-      image.alt = '';
-      thumb.append(image);
-    }
-    thumb.append(icon('<path d="M4 2.5v11l9-5.5z"/>'));
-    row.append(thumb);
-  }
-
   const body = document.createElement('div');
   body.className = 'entry-body';
   const top = document.createElement('div');
@@ -214,14 +201,12 @@ function renderEntry(entry) {
   preview.textContent = entry.previewText || 'Empty entry';
   const actions = document.createElement('div');
   actions.className = 'entry-actions';
-  if (entry.type === 'text') {
-    actions.append(actionButton(
-      'export',
-      'Export entry as PDF',
-      '<path class="stroke" d="M8 2v8M4.5 7 8 10.5 11.5 7M3 14h10"/>',
-      () => exportEntry(entry),
-    ));
-  }
+  actions.append(actionButton(
+    'export',
+    'Export entry as PDF',
+    '<path class="stroke" d="M8 2v8M4.5 7 8 10.5 11.5 7M3 14h10"/>',
+    () => exportEntry(entry),
+  ));
   actions.append(actionButton(
     'trash',
     'Delete entry',
@@ -237,8 +222,56 @@ function renderEntry(entry) {
   return row;
 }
 
+function activityTitle(date, words) {
+  const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return `${words ? `${words} word${words === 1 ? '' : 's'}` : 'Nothing written'} on ${label}`;
+}
+
+function renderActivity() {
+  const days = new Map();
+  state.entries.forEach((entry) => {
+    const key = new Date(entry.timestamp).toDateString();
+    days.set(key, (days.get(key) || 0) + entry.words);
+  });
+
+  const today = new Date();
+  const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 52 * 7 - today.getDay());
+  const grid = document.createElement('div');
+  grid.className = 'activity-grid';
+  const months = document.createElement('div');
+  months.className = 'activity-months';
+  let daysWritten = 0;
+  let week = 0;
+  let labelledMonth = date.getDate() > 7 ? date.getMonth() : null;
+
+  while (date <= today) {
+    const words = days.get(date.toDateString()) || 0;
+    const cell = document.createElement('div');
+    cell.dataset.level = ACTIVITY_LEVELS.filter((minimum) => words >= minimum).length;
+    cell.title = activityTitle(date, words);
+    grid.append(cell);
+    if (date >= new Date(today.getFullYear() - 1, today.getMonth(), today.getDate()) && Number(cell.dataset.level) > 0) daysWritten += 1;
+    if (date.getDay() === 0 && date.getMonth() !== labelledMonth) {
+      labelledMonth = date.getMonth();
+      const label = document.createElement('span');
+      label.textContent = date.toLocaleDateString('en-US', { month: 'short' });
+      label.style.left = `${week * ACTIVITY_WEEK_WIDTH}px`;
+      months.append(label);
+    }
+    if (date.getDay() === 6) week += 1;
+    date.setDate(date.getDate() + 1);
+  }
+
+  const scroller = $('activityScroller');
+  const previous = scroller.scrollLeft;
+  scroller.replaceChildren(months, grid);
+  scroller.scrollLeft = previous || scroller.scrollWidth;
+  $('activitySummary').textContent = `${daysWritten} day${daysWritten === 1 ? '' : 's'} written in the past year`;
+}
+
 function renderEntries() {
   if ($('sidebar').hidden) return;
+  renderActivity();
   const groups = [];
   let currentLabel = null;
   state.entries.forEach((entry) => {
@@ -263,14 +296,6 @@ function renderEntryDate() {
   const date = new Date(state.selected.timestamp);
   const part = (options) => date.toLocaleDateString('en-GB', options);
   $('entryDate').textContent = `${part({ weekday: 'long' })} ${part({ day: 'numeric' })} ${part({ month: 'long' })}`;
-}
-
-function updateModeControls() {
-  renderEntryDate();
-  const video = isVideoSelected();
-  $('fontNav').hidden = video;
-  $('backspaceBtn').hidden = video;
-  closePopovers();
 }
 
 function applyFont() {
@@ -300,8 +325,8 @@ function toggleTheme() {
 
 async function randomFonts() {
   if (!state.fontList) {
-    const fonts = await window.queryLocalFonts();
-    state.fontList = [...new Set(fonts.map((font) => font.family))].filter((family) => !family.startsWith('.'));
+    const fonts = await api.listFonts();
+    state.fontList = [...new Set(fonts)].filter((family) => !family.startsWith('.'));
   }
   return state.fontList;
 }
@@ -312,6 +337,13 @@ function renderTimer() {
   const time = `${minutes}:${seconds}`;
   $('timerBtn').textContent = time;
   $('timerValue').textContent = time;
+  if (state.timerRunning && !state.timerClock) {
+    state.timerClock = setInterval(tick, 1000);
+  } else if (!state.timerRunning && state.timerClock) {
+    clearInterval(state.timerClock);
+    state.timerClock = null;
+  }
+  if (!state.timerRunning) $('runline').classList.remove('idle');
   const elapsed = state.timerTotal - state.timeRemaining;
   $('runlineFill').style.width = `${(elapsed / state.timerTotal) * 100}%`;
   if (state.timerRunning) $('timerStart').textContent = 'Pause';
@@ -327,13 +359,28 @@ function setNavVisible(visible) {
   editor.classList.toggle('nav-hidden', !visible);
 }
 
+function showSessionSummary() {
+  flushSave();
+  settleSession();
+  const words = state.session ? state.session.words : 0;
+  state.session = null;
+  if (words <= 0) return;
+  const minutes = Math.max(1, Math.round(state.timerTotal / 60));
+  $('entryDate').textContent = `${words} word${words === 1 ? '' : 's'} in ${minutes} minute${minutes === 1 ? '' : 's'}`;
+  clearTimeout(state.summaryTimer);
+  state.summaryTimer = setTimeout(renderEntryDate, SUMMARY_TIME);
+}
+
 function tick() {
-  if (!state.timerRunning) return;
-  state.timeRemaining -= 1;
+  // Uses the real clock, because timers slow down while a window is hidden.
+  state.timeRemaining = Math.max(0, Math.round((state.timerEndsAt - Date.now()) / 1000));
   if (state.timeRemaining === 0) {
     state.timerRunning = false;
     setNavVisible(true);
     $('runline').classList.add('finished');
+    showSessionSummary();
+  } else if (Date.now() - state.lastInput > IDLE_AFTER) {
+    $('runline').classList.add('idle');
   }
   renderTimer();
 }
@@ -342,6 +389,8 @@ function setTimerMinutes(minutes) {
   const clamped = Math.min(Math.max(minutes, MIN_TIMER_MINUTES), MAX_TIMER_MINUTES);
   state.timerTotal = clamped * 60;
   state.timeRemaining = state.timerTotal;
+  state.timerEndsAt = Date.now() + state.timeRemaining * 1000;
+  state.session = null;
   localStorage.setItem('timerMinutes', String(clamped));
   $('runline').classList.remove('finished');
   renderTimer();
@@ -356,17 +405,29 @@ function toggleTimer() {
   state.timerRunning = !state.timerRunning;
   if (state.timerRunning) {
     if (state.timeRemaining === 0) state.timeRemaining = state.timerTotal;
+    state.timerEndsAt = Date.now() + state.timeRemaining * 1000;
+    if (state.timeRemaining === state.timerTotal || !state.session) {
+      flushSave();
+      state.session = { words: 0, base: state.selected.words };
+    }
+    state.lastInput = Date.now();
+    clearTimeout(state.summaryTimer);
+    renderEntryDate();
     closePopovers();
     setNavVisible(false);
-    if (!isVideoSelected()) editor.focus();
+    editor.focus();
+  } else {
+    setNavVisible(true);
   }
   renderTimer();
 }
 
 function resetTimer() {
   state.timerRunning = false;
+  state.session = null;
   state.timeRemaining = state.timerTotal;
   $('runline').classList.remove('finished');
+  setNavVisible(true);
   renderTimer();
 }
 
@@ -386,7 +447,6 @@ function closePopovers() {
   $('menu').hidden = true;
   $('timerPanel').hidden = true;
   $('chatPopover').hidden = true;
-  $('videoPopover').hidden = true;
 }
 
 function popoverText(text) {
@@ -421,9 +481,7 @@ function openChatPopover() {
     api.openChat(provider, `${window.CHAT_PROMPTS[provider]}\n\n${text}`);
   };
 
-  if (isVideoSelected()) {
-    popover.replaceChildren(popoverText('Chat works with written entries. Open or write one, then click this.'));
-  } else if (tooLong) {
+  if (tooLong) {
     popover.replaceChildren(
       popoverText("Hey, your entry is quite long. Click Copy Prompt, then paste it into the AI of your choice. The prompt includes your entry."),
       copyButton(),
@@ -440,207 +498,121 @@ function openChatPopover() {
   popover.hidden = false;
 }
 
-function showPermissionPopover({ camera, microphone, message }) {
-  const popover = $('videoPopover');
-  const rows = [];
-  if (message) rows.push(popoverText(message));
-  const permissionRow = (text, label, pane) => {
-    const button = popoverButton(text, () => {
-      closePopovers();
-      api.openPrivacySettings(pane);
-    });
-    const small = document.createElement('small');
-    small.textContent = label;
-    button.append(small);
-    return button;
-  };
-  if (camera === false) rows.push(permissionRow('Hey, we need camera permission.', 'Open Camera Settings', 'camera'));
-  if (microphone === false) rows.push(permissionRow('Hey, we need microphone permission.', 'Open Microphone Settings', 'microphone'));
-  popover.replaceChildren(...rows);
-  popover.hidden = false;
+/* ---------- Search ---------- */
+
+function escapeForPattern(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/* ---------- Video recording ---------- */
-
-const recorder = {
-  stream: null,
-  mediaRecorder: null,
-  id: null,
-  extension: null,
-  writes: Promise.resolve(),
-  writeFailed: false,
-  thumbnail: null,
-  startedAt: 0,
-  clock: null,
-  preparing: false,
-};
-
-function chooseFormat() {
-  const formats = [
-    { mimeType: 'video/mp4;codecs=avc1.42E01F,mp4a.40.2', extension: 'mp4' },
-    { mimeType: 'video/webm', extension: 'webm' },
-  ];
-  return formats.find((format) => MediaRecorder.isTypeSupported(format.mimeType));
-}
-
-function setPreparing(preparing) {
-  recorder.preparing = preparing;
-  $('menuBtn').querySelector('.mark').toggleAttribute('hidden', preparing);
-  $('menuBtn').querySelector('.spinner').hidden = !preparing;
-}
-
-async function openRecorder() {
-  if (recorder.preparing || !$('recorder').hidden) return;
-  closePopovers();
-  setPreparing(true);
-  try {
-    const access = await api.requestMediaAccess();
-    if (!access.camera || !access.microphone) {
-      showPermissionPopover(access);
-      return;
-    }
-    player.pause();
-    recorder.stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: true,
-    });
-    $('preview').srcObject = recorder.stream;
-    $('recorder').hidden = false;
-    $('recorderToggle').textContent = 'Start Recording';
-  } catch (error) {
-    console.error('Could not open camera:', error);
-    releaseCamera();
-    showPermissionPopover({ message: 'Could not prepare camera right now. Please try again.' });
-  } finally {
-    setPreparing(false);
+function highlightedSnippet(snippet, query) {
+  const line = document.createElement('div');
+  line.className = 'result-snippet';
+  let position = 0;
+  for (const match of snippet.matchAll(new RegExp(escapeForPattern(query), 'giu'))) {
+    line.append(snippet.slice(position, match.index));
+    const mark = document.createElement('mark');
+    mark.textContent = match[0];
+    line.append(mark);
+    position = match.index + match[0].length;
   }
+  line.append(snippet.slice(position));
+  return line;
 }
 
-function releaseCamera() {
-  if (recorder.stream) recorder.stream.getTracks().forEach((track) => track.stop());
-  recorder.stream = null;
-  $('preview').srcObject = null;
+async function openSearchResult(filename, query) {
+  const entry = state.entries.find((candidate) => candidate.filename === filename);
+  if (!entry) return;
+  if (entry !== state.selected) await selectEntry(entry);
+  const match = new RegExp(escapeForPattern(query), 'iu').exec(editor.value);
+  if (!match) return;
+  editor.setSelectionRange(match.index, match.index);
+  editor.blur();
+  editor.focus();
 }
 
-function captureThumbnail() {
-  const preview = $('preview');
-  if (!preview.videoWidth) return null;
-  const canvas = document.createElement('canvas');
-  const scale = Math.min(1, 320 / preview.videoWidth);
-  canvas.width = Math.round(preview.videoWidth * scale);
-  canvas.height = Math.round(preview.videoHeight * scale);
-  canvas.getContext('2d').drawImage(preview, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL('image/jpeg', 0.82);
+function setActiveResult(index) {
+  const rows = [...document.querySelectorAll('.result')];
+  if (!rows.length) return;
+  state.activeResult = (index + rows.length) % rows.length;
+  rows.forEach((row, position) => row.classList.toggle('active', position === state.activeResult));
+  rows[state.activeResult].scrollIntoView({ block: 'nearest' });
 }
 
-function renderRecordingTime() {
-  const seconds = Math.floor((Date.now() - recorder.startedAt) / 1000);
-  $('recorderTime').textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
-}
-
-function resetRecordingState() {
-  clearInterval(recorder.clock);
-  recorder.mediaRecorder = null;
-  recorder.id = null;
-  recorder.writes = Promise.resolve();
-  recorder.writeFailed = false;
-  recorder.thumbnail = null;
-  $('recorderStatus').hidden = true;
-  $('recorderToggle').textContent = 'Start Recording';
-}
-
-async function startRecording() {
-  const format = chooseFormat();
-  if (!format) throw new Error('This computer has no supported video format.');
-  recorder.id = await api.beginRecording();
-  recorder.extension = format.extension;
-  recorder.thumbnail = captureThumbnail();
-
-  const mediaRecorder = new MediaRecorder(recorder.stream, { mimeType: format.mimeType });
-  const id = recorder.id;
-  mediaRecorder.addEventListener('dataavailable', (event) => {
-    if (!event.data || event.data.size === 0) return;
-    recorder.writes = recorder.writes
-      .then(() => event.data.arrayBuffer())
-      .then((buffer) => api.writeRecordingChunk(id, buffer))
-      .catch((error) => {
-        recorder.writeFailed = true;
-        console.error('Could not write recording:', error);
-      });
+function renderSearchResults(results, query) {
+  const rows = results.map(({ filename, snippet }, index) => {
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'result';
+    row.tabIndex = -1;
+    const entry = state.entries.find((candidate) => candidate.filename === filename);
+    const date = document.createElement('div');
+    date.className = 'entry-time';
+    date.textContent = entry ? entry.displayDate : '';
+    row.append(highlightedSnippet(snippet, query), date);
+    row.addEventListener('mousemove', () => {
+      if (state.activeResult !== index) setActiveResult(index);
+    });
+    row.addEventListener('click', () => chooseResult(filename, query));
+    return row;
   });
-  mediaRecorder.start(1000);
-  recorder.mediaRecorder = mediaRecorder;
-  recorder.startedAt = Date.now();
-  $('recorderTime').textContent = '0:00';
-  $('recorderStatus').hidden = false;
-  $('recorderToggle').textContent = 'Stop Recording';
-  recorder.clock = setInterval(renderRecordingTime, 500);
-}
-
-function stopMediaRecorder() {
-  return new Promise((resolve) => {
-    const { mediaRecorder } = recorder;
-    if (!mediaRecorder || mediaRecorder.state === 'inactive') {
-      resolve();
-      return;
-    }
-    mediaRecorder.addEventListener('stop', () => resolve(), { once: true });
-    mediaRecorder.stop();
-  });
-}
-
-async function finishRecording() {
-  $('recorderToggle').textContent = 'Saving...';
-  await stopMediaRecorder();
-  await recorder.writes;
-
-  const { id, extension, thumbnail, writeFailed } = recorder;
-  if (writeFailed) {
-    await api.abortRecording(id);
-    throw new Error('The recording could not be written to disk.');
+  if (!rows.length) {
+    const empty = document.createElement('div');
+    empty.className = 'result-empty';
+    empty.textContent = 'No matches';
+    rows.push(empty);
   }
+  $('searchResults').replaceChildren(...rows);
+  $('searchResults').hidden = false;
+  setActiveResult(0);
+}
 
+async function runSearch() {
+  const query = $('search').value.trim();
+  state.searchQuery = query;
+  if (!query) {
+    $('searchResults').hidden = true;
+    return;
+  }
   flushSave();
-  const current = state.selected;
-  const reuse = current && current.type === 'text' && editor.value.trim() === '';
-  const entry = await api.finishRecording({
-    id, extension, thumbnail, replaceFilename: reuse ? current.filename : null,
-  });
-
-  state.entries = state.entries.filter((candidate) => candidate.filename !== entry.filename);
-  state.entries.unshift(entry);
-  state.entries.sort((a, b) => (b.timestamp - a.timestamp) || b.filename.localeCompare(a.filename));
-  closeRecorderView();
-  await selectEntry(entry);
-}
-
-function closeRecorderView() {
-  resetRecordingState();
-  releaseCamera();
-  $('recorder').hidden = true;
-}
-
-async function cancelRecorder() {
-  const { id } = recorder;
-  if (id) {
-    await stopMediaRecorder();
-    await recorder.writes;
-    await api.abortRecording(id);
+  const results = await api.searchEntries(query);
+  if (query === state.searchQuery) {
+    state.searchResults = results;
+    renderSearchResults(results, query);
   }
-  closeRecorderView();
-  if (isVideoSelected()) player.play().catch(() => { /* the viewer can press play */ });
 }
 
-async function toggleRecording() {
-  const button = $('recorderToggle');
-  if (button.textContent === 'Saving...') return;
-  try {
-    if (recorder.mediaRecorder) await finishRecording();
-    else await startRecording();
-  } catch (error) {
-    console.error('Recording failed:', error);
-    closeRecorderView();
-    showPermissionPopover({ message: 'Could not save that recording. Please try again.' });
+function openSearch() {
+  if (!$('guide').hidden) return;
+  closePopovers();
+  $('spotlight').hidden = false;
+  $('search').value = '';
+  $('searchResults').hidden = true;
+  state.searchQuery = '';
+  $('search').focus();
+}
+
+function closeSearch() {
+  clearTimeout(state.searchTimer);
+  $('spotlight').hidden = true;
+  editor.focus();
+}
+
+function chooseResult(filename, query) {
+  closeSearch();
+  return openSearchResult(filename, query);
+}
+
+function handleSearchKey(event) {
+  if (event.key === 'Escape') {
+    event.stopPropagation();
+    closeSearch();
+  } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault();
+    setActiveResult(state.activeResult + (event.key === 'ArrowDown' ? 1 : -1));
+  } else if (event.key === 'Enter') {
+    event.preventDefault();
+    const result = state.searchResults[state.activeResult];
+    if (result && state.searchQuery && !$('searchResults').hidden) chooseResult(result.filename, state.searchQuery);
   }
 }
 
@@ -655,7 +627,7 @@ function openGuide() {
 function closeGuide() {
   $('guide').hidden = true;
   localStorage.setItem('guideSeen', 'true');
-  if (!isVideoSelected()) editor.focus();
+  editor.focus();
 }
 
 /* ---------- Wiring ---------- */
@@ -663,6 +635,8 @@ function closeGuide() {
 function wireControls() {
   editor.addEventListener('input', () => {
     scheduleSave();
+    state.lastInput = Date.now();
+    $('runline').classList.remove('idle');
     if (state.timerRunning) setNavVisible(false);
   });
   editor.addEventListener('keydown', (event) => {
@@ -708,7 +682,6 @@ function wireControls() {
     button.addEventListener('click', () => setTimerMinutes(Number(button.dataset.minutes)));
   });
   $('timerBtn').addEventListener('wheel', handleTimerScroll, { passive: false });
-  $('videoBtn').addEventListener('click', openRecorder);
   $('chatBtn').addEventListener('click', () => {
     if ($('chatPopover').hidden) {
       closePopovers();
@@ -736,7 +709,7 @@ function wireControls() {
   $('historyBtn').addEventListener('click', () => {
     $('sidebar').hidden = !$('sidebar').hidden;
     renderEntries();
-    if (!isVideoSelected()) editor.focus();
+    editor.focus();
   });
   $('historyHeader').addEventListener('click', () => api.openFolder());
 
@@ -754,14 +727,25 @@ function wireControls() {
     if (!$('guide').hidden) closeGuide();
   });
 
+  $('searchHint').textContent = api.platform === 'darwin' ? '⌘F' : 'Ctrl+F';
+  $('searchBtn').addEventListener('click', openSearch);
+  $('spotlight').addEventListener('mousedown', (event) => {
+    if (event.target === $('spotlight')) closeSearch();
+  });
+  $('search').addEventListener('input', () => {
+    clearTimeout(state.searchTimer);
+    state.searchTimer = setTimeout(runSearch, SEARCH_DELAY);
+  });
+  $('search').addEventListener('keydown', handleSearchKey);
+  document.addEventListener('keydown', (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') {
+      event.preventDefault();
+      if ($('spotlight').hidden) openSearch();
+      else closeSearch();
+    }
+  });
   $('guideBtn').addEventListener('click', openGuide);
   $('guideClose').addEventListener('click', closeGuide);
-  $('recorderToggle').addEventListener('click', toggleRecording);
-  $('recorderClose').addEventListener('click', cancelRecorder);
-
-  const savedVolume = Number(localStorage.getItem('videoVolume'));
-  if (localStorage.getItem('videoVolume') !== null && savedVolume >= 0 && savedVolume <= 1) player.volume = savedVolume;
-  player.addEventListener('volumechange', () => localStorage.setItem('videoVolume', String(player.volume)));
 
   api.onNewEntry(createEntry);
   api.onFullscreenChange((value) => {
@@ -770,7 +754,11 @@ function wireControls() {
   });
 
   window.addEventListener('pagehide', flushSave);
-  setInterval(tick, 1000);
+  window.addEventListener('runon-save-failed', () => {
+    state.dirty = true;
+    clearTimeout(state.saveTimer);
+    state.saveTimer = setTimeout(flushSave, SAVE_RETRY_DELAY);
+  });
 }
 
 document.documentElement.dataset.platform = api.platform;

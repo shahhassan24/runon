@@ -1,0 +1,5 @@
+{
+  "identifier": "default",
+  "windows": ["main", "print"],
+  "permissions": ["core:default", "core:window:allow-start-dragging"]
+}
