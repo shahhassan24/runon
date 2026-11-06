@@ -10,8 +10,11 @@
       "label": "main", "title": "Runon",
       "width": 1100, "height": 600, "minWidth": 1100, "minHeight": 600,
       "titleBarStyle": "Overlay", "hiddenTitle": true,
-      "dragDropEnabled": false
+      "dragDropEnabled": false,
+      "transparent": true,
+      "windowEffects": { "effects": ["sidebar"], "state": "followsWindowActiveState" }
     }],
+    "macOSPrivateApi": true,
     "security": { "csp": null }
   },
   "bundle": {

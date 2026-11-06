@@ -3,34 +3,95 @@
   src: url("fonts/Literata-Regular.woff2") format("woff2");
 }
 
+/*
+  Runon's design system follows Apple's Human Interface Guidelines and the
+  Liquid Glass look of macOS 26.
+
+  - Glass: controls and navigation float above the content on a translucent
+    layer that blurs and brightens what is behind it, with a light edge on top
+    and a soft shadow. Content (the writing page) stays solid and full-bleed.
+  - Shapes: capsules for controls, and corners that stay concentric: a 16-point
+    sidebar inset 8 points from the window, rows inside it rounded to 10.
+  - Colour: the macOS semantic colours, with the accent chosen in System Settings.
+  - Type: the system font. Title 15 bold, Body 13, Callout 12, Subheadline 11,
+    Footnote 10. Large titles use tighter tracking, as SF Pro Display does.
+  - Spacing: a 4-point grid. Controls are 28 high, toolbar capsules 36.
+*/
 :root {
-  --paper: #fafaf7;
-  --ink: #111111;
-  --ink2: #46453f;
-  --ink3: #6c6b63;
-  --hair: #e4e2da;
-  --card: #f3f2ec;
-  --card2: #ebe9e1;
+  color-scheme: light;
   --page: #ffffff;
-  --rec: #b3321f;
-  --frame: #1d1c1a;
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.14);
+  --window: #f2f2f5;
+  --label: rgba(0, 0, 0, 0.88);
+  --secondary-label: rgba(0, 0, 0, 0.5);
+  --tertiary-label: rgba(0, 0, 0, 0.28);
+  --separator: rgba(0, 0, 0, 0.09);
+  --fill: rgba(0, 0, 0, 0.045);
+  --fill-strong: rgba(0, 0, 0, 0.08);
+  --selection: rgba(0, 0, 0, 0.1);
+  --accent: #007aff;
+  --destructive: #ff3b30;
+  --on-accent: #ffffff;
+  --focus-ring: color-mix(in srgb, var(--accent) 45%, transparent);
+
+  /* Liquid Glass */
+  --glass: rgba(255, 255, 255, 0.58);
+  --glass-strong: rgba(250, 250, 252, 0.78);
+  --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 55%);
+  --glass-edge: inset 0 0.5px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 0.5px rgba(255, 255, 255, 0.55), 0 0 0 0.5px rgba(0, 0, 0, 0.1);
+  --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.06);
+  --glass-shadow-raised: 0 24px 60px rgba(0, 0, 0, 0.18), 0 6px 16px rgba(0, 0, 0, 0.08);
+  --glass-blur: blur(26px) saturate(1.9) brightness(1.04);
+  --thumb: #ffffff;
+  --thumb-shadow: 0 1px 3px rgba(0, 0, 0, 0.14), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+
+  --font-system: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
   --editor-font: "Literata", Georgia, serif;
   --editor-size: 18px;
+  --sidebar-width: 264px;
+  --inset: 8px;
 }
 
 :root[data-theme="dark"] {
-  --paper: #161614;
-  --ink: #ecebe4;
-  --ink2: #c2c0b7;
-  --ink3: #918f86;
-  --hair: #2c2b28;
-  --card: #1e1e1b;
-  --card2: #272623;
-  --page: #262623;
-  --rec: #e8745f;
-  --frame: #10100f;
-  --shadow: 0 18px 48px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
+  --page: #1c1c1e;
+  --window: #141416;
+  --label: rgba(255, 255, 255, 0.9);
+  --secondary-label: rgba(255, 255, 255, 0.55);
+  --tertiary-label: rgba(255, 255, 255, 0.26);
+  --separator: rgba(255, 255, 255, 0.1);
+  --fill: rgba(255, 255, 255, 0.06);
+  --fill-strong: rgba(255, 255, 255, 0.11);
+  --selection: rgba(255, 255, 255, 0.14);
+  --accent: #0a84ff;
+  --destructive: #ff453a;
+
+  --glass: rgba(44, 44, 48, 0.5);
+  --glass-strong: rgba(38, 38, 42, 0.78);
+  --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0) 55%);
+  --glass-edge: inset 0 0.5px 0 rgba(255, 255, 255, 0.28), inset 0 0 0 0.5px rgba(255, 255, 255, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.5);
+  --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --glass-shadow-raised: 0 24px 60px rgba(0, 0, 0, 0.6), 0 6px 16px rgba(0, 0, 0, 0.35);
+  --glass-blur: blur(26px) saturate(1.6) brightness(0.96);
+  --thumb: rgba(255, 255, 255, 0.22);
+  --thumb-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), inset 0 0.5px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* On a Mac, follow the accent colour chosen in System Settings. */
+@supports (color: -apple-system-control-accent) {
+  :root[data-platform="darwin"] { --accent: -apple-system-control-accent; }
+}
+
+/* Increase Contrast: stronger edges and labels, glass made more solid. */
+@media (prefers-contrast: more) {
+  :root { --separator: rgba(0, 0, 0, 0.3); --secondary-label: rgba(0, 0, 0, 0.72); --glass: rgba(255, 255, 255, 0.92); --glass-strong: #ffffff; }
+  :root[data-theme="dark"] { --separator: rgba(255, 255, 255, 0.35); --secondary-label: rgba(255, 255, 255, 0.78); --glass: rgba(30, 30, 32, 0.95); --glass-strong: #1e1e20; }
+}
+
+/* Reduce Transparency: glass becomes a solid, frosted-looking fill. */
+@media (prefers-reduced-transparency: reduce) {
+  :root { --glass: #f4f4f6; --glass-strong: #f8f8fa; --glass-blur: none; }
+  :root[data-theme="dark"] { --glass: #2a2a2d; --glass-strong: #2a2a2d; }
 }
 
 /* Colours crossfade only while the theme is switching, so hover stays instant. */
@@ -49,20 +110,27 @@ html, body {
   height: 100%;
   margin: 0;
   overflow: hidden;
-  background: var(--paper);
-  color: var(--ink);
-  font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--page);
+  color: var(--label);
+  font: 13px/16px var(--font-system);
+  letter-spacing: -0.003em;
+  -webkit-font-smoothing: antialiased;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
 }
+input, textarea { -webkit-user-select: text; user-select: text; }
 
 button {
   all: unset;
-  cursor: pointer;
+  cursor: default;
   white-space: nowrap;
 }
-button:focus-visible { outline: 1.5px solid var(--ink3); outline-offset: 2px; border-radius: 6px; }
+:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 1px; }
+button:focus-visible { border-radius: 999px; }
 
-.icon { flex: none; display: block; width: 14px; height: 14px; fill: currentColor; }
-.icon .stroke { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.icon { flex: none; display: block; width: 16px; height: 16px; fill: currentColor; }
+.icon .stroke { fill: none; stroke: currentColor; stroke-width: 1.45; stroke-linecap: round; stroke-linejoin: round; }
 .mark {
   flex: none;
   width: 15px;
@@ -74,381 +142,489 @@ button:focus-visible { outline: 1.5px solid var(--ink3); outline-offset: 2px; bo
   stroke-linejoin: round;
 }
 
-.drag-strip {
-  position: fixed;
-  inset: 0 0 auto 0;
-  height: 36px;
-  z-index: 5;
+/*
+  Glass surfaces. The blur sits on a layer behind each surface, not on the surface
+  itself, so menus that open from inside it can still blur the page behind them.
+*/
+.glass-group, #sidebar, .popover, .alert-panel, .spotlight-panel, .guide-page, .entry > .entry-actions, #runline {
+  position: relative;
+  isolation: isolate;
 }
-[data-platform="win32"] .drag-strip { display: none; }
+.glass-group::before, #sidebar::before, .popover::before, .alert-panel::before, .spotlight-panel::before, .guide-page::before, .entry > .entry-actions::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--glass-sheen), var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-edge), var(--glass-shadow);
+  pointer-events: none;
+}
+.popover::before, .alert-panel::before, .spotlight-panel::before, .guide-page::before { background: var(--glass-sheen), var(--glass-strong); box-shadow: var(--glass-edge), var(--glass-shadow-raised); }
 
-#app { display: flex; height: 100%; }
+#app { position: relative; display: flex; height: 100%; }
 
-/* Writing */
+/* Window: the page fills the window, and everything else floats on glass above it. */
 
 #main {
+  --content-left: 0px;
   position: relative;
   flex: 1;
   min-width: 0;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  padding-left: var(--content-left);
+  background: var(--page);
 }
+#sidebar:not([hidden]) + #main { --content-left: calc(var(--sidebar-width) + var(--inset)); }
 
 #topbar {
   position: absolute;
-  inset: 0 0 auto 0;
-  height: 64px;
+  z-index: 3;
+  top: 0;
+  right: 0;
+  left: var(--content-left);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 52px;
+  padding: 0 10px 0 10px;
   transition: opacity 0.2s ease-out;
 }
-#topbar.faded { opacity: 0; transition: opacity 1s ease-in; }
-#topLogo {
+/* Scroll edge: the writing softly blurs and fades as it passes under the toolbar. */
+#topbar::before {
+  content: "";
   position: absolute;
-  top: 16px;
-  left: 20px;
+  inset: 0 0 -18px 0;
+  z-index: -1;
+  background: linear-gradient(180deg, var(--page) 0%, color-mix(in srgb, var(--page) 70%, transparent) 55%, transparent 100%);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent);
+  mask-image: linear-gradient(180deg, #000 55%, transparent);
+  pointer-events: none;
+}
+#topbar.faded { opacity: 0; transition: opacity 1s ease-in; }
+/* Leaves room for the window buttons when the sidebar is closed. */
+[data-platform="darwin"]:not(.fullscreen) #sidebar[hidden] + #main #topbar { padding-left: 80px; }
+
+.glass-group {
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 36px;
+  padding: 0 4px;
+  border-radius: 999px;
+}
+
+.window-title { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; padding-left: 4px; }
+#entryDate { overflow: hidden; color: var(--label); font: 700 15px/19px var(--font-display); letter-spacing: -0.012em; text-overflow: ellipsis; white-space: nowrap; }
+#entryMeta { overflow: hidden; color: var(--secondary-label); font-size: 11px; line-height: 14px; text-overflow: ellipsis; white-space: nowrap; }
+
+#nav { flex: none; display: flex; align-items: center; gap: 8px; transition: opacity 0.2s ease-out; }
+#nav.faded { opacity: 0; transition: opacity 1s ease-in; }
+
+/* Toolbar buttons: borderless capsules inside a glass group. */
+.toolbar-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
-  background: var(--card);
-  /* Sits above the window's drag strip, so the whole button can be clicked. */
-  z-index: 6;
+  gap: 5px;
+  min-width: 32px;
+  height: 28px;
+  padding: 0 7px;
+  border-radius: 999px;
+  color: var(--label);
+  font-size: 13px;
+  transition: background-color 0.12s ease;
 }
-#topLogo:hover { background: var(--card2); }
-#topLogo .mark { width: 20px; height: 20px; }
-/* Leaves room for the Mac window buttons, which sit in this corner. */
-[data-platform="darwin"]:not(.fullscreen) #sidebar[hidden] + #main #topLogo { left: 84px; }
-#entryDate {
-  position: absolute;
-  top: 25px;
-  left: 0;
-  right: 0;
-  color: var(--ink3);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.12em;
-  text-align: center;
-  text-transform: uppercase;
+.toolbar-btn .icon { width: 17px; height: 17px; }
+.toolbar-btn:hover { background: var(--fill-strong); }
+.toolbar-btn:active, .toolbar-btn[aria-expanded="true"] { background: var(--selection); }
+.toolbar-btn.small { min-width: 26px; height: 26px; padding: 0; color: var(--secondary-label); }
+.toolbar-btn.small .icon { width: 15px; height: 15px; }
+.toolbar-btn.small:hover { color: var(--label); }
+.format-glyph { font: 500 15px/1 var(--font-display); letter-spacing: -0.02em; }
+.timer-btn { padding: 0 10px 0 8px; font-variant-numeric: tabular-nums; }
+.timer-btn .icon { width: 15px; height: 15px; }
+
+/* The search field: a glass capsule of its own. */
+.search-group { padding: 0 4px; }
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 172px;
+  height: 28px;
+  padding: 0 10px 0 8px;
+  border-radius: 999px;
+  color: var(--secondary-label);
+  font-size: 13px;
 }
+.search-field .icon { width: 15px; height: 15px; }
+.search-field span { flex: 1; }
+.search-field kbd { color: var(--tertiary-label); font: inherit; font-size: 12px; }
+.search-field:hover { background: var(--fill); color: var(--label); }
 
 #editor {
+  flex: 1;
   width: 100%;
-  max-width: 660px;
-  align-self: flex-start;
-  height: calc(100% - 148px);
-  margin-top: 64px;
-  padding: 16px 8px;
+  max-width: 680px;
+  min-height: 0;
+  padding: 84px 20px 72px;
   border: 0;
   outline: 0;
   resize: none;
   background: transparent;
-  color: var(--ink);
-  caret-color: var(--ink);
+  color: var(--label);
+  caret-color: var(--accent);
   font-family: var(--editor-font);
   font-size: var(--editor-size);
   line-height: 1.65;
 }
-#editor.nav-hidden { height: calc(100% - 104px); }
-#editor::placeholder { color: var(--ink3); }
+#editor::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
+#editor::placeholder { color: var(--tertiary-label); }
 
-/* The line: the timer, and the one thing that stays while you write */
+/* The line: the timer, and the one thing that stays while you write. A glass track. */
 
 #runline {
   position: absolute;
-  inset: auto 28px 22px;
-  height: 3px;
-  border-radius: 3px;
-  background: var(--hair);
+  right: 24px;
+  bottom: 18px;
+  left: calc(var(--content-left) + 24px);
+  height: 5px;
+  border-radius: 999px;
+  background: var(--fill-strong);
+  box-shadow: inset 0 0.5px 1px rgba(0, 0, 0, 0.12);
+  transition: opacity 0.3s ease-out;
 }
-#runline { transition: opacity 0.3s ease-out; }
 #runline.idle { opacity: 0.12; transition: opacity 8s linear; }
 #runlineFill {
   width: 0;
   height: 100%;
-  border-radius: 3px;
-  background: var(--ink);
+  border-radius: 999px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 80%, #fff), var(--accent));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 45%, transparent);
   transition: width 1s linear;
 }
 #runline.finished #runlineFill { animation: settle 1.6s ease-in-out 2; }
 @keyframes settle { 50% { opacity: 0.3; } }
 
-/* Controls */
-
-#nav {
-  position: absolute;
-  inset: auto 20px 36px;
-  z-index: 2;
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  transition: opacity 0.2s ease-out;
-}
-#nav.faded { opacity: 0; transition: opacity 1s ease-in; }
-.nav-spacer { flex: 1; min-width: 12px; }
-
-.nav-btn {
-  display: flex;
-  align-items: baseline;
-  gap: 7px;
-  height: 30px;
-  line-height: 30px;
-  padding: 0 10px;
-  border-radius: 8px;
-  color: var(--ink3);
-}
-.nav-btn > svg { align-self: center; }
-.nav-btn:hover { background: var(--card2); color: var(--ink); }
-#newEntryBtn { color: var(--ink); }
-#timerBtn { font-variant-numeric: tabular-nums; }
-
-#fontNav { display: flex; align-items: baseline; gap: 1px; margin-left: auto; }
-#fontNav .nav-btn { padding: 0 7px; }
-#fontNav .active { color: var(--ink); }
-#randomBtn { display: block; max-width: 130px; overflow: hidden; text-overflow: ellipsis; }
 [data-font="Literata"] { font-family: "Literata", serif; }
 [data-font="Arial"] { font-family: Arial, sans-serif; }
 [data-font="Serif"] { font-family: "Times New Roman", serif; }
 
 .anchor { position: relative; display: flex; }
 
+/* Popovers and menus: raised glass with generous corners. */
+
 .popover {
   position: absolute;
-  right: 0;
-  bottom: calc(100% + 10px);
+  top: calc(100% + 12px);
+  right: -6px;
+  z-index: 20;
   width: 260px;
   max-height: calc(100vh - 110px);
   overflow-y: auto;
   padding: 6px;
-  border: 1px solid var(--hair);
-  border-radius: 12px;
-  background: var(--card);
-  color: var(--ink);
-  box-shadow: var(--shadow);
+  border-radius: 16px;
+  color: var(--label);
   font-size: 13px;
-  line-height: 1.4;
+  line-height: 16px;
+  animation: pop-in 0.16s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  transform-origin: top right;
 }
-.popover p { margin: 0; padding: 7px 9px; }
-.popover button { box-sizing: border-box; display: block; width: 100%; padding: 7px 9px; border-radius: 7px; white-space: normal; }
-.popover button:hover { background: var(--card2); }
+@keyframes pop-in { from { opacity: 0; transform: scale(0.96) translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .popover { animation: none; } }
+.popover p { margin: 0; padding: 6px 10px; }
+.popover button { box-sizing: border-box; display: block; width: 100%; padding: 4px 10px; border-radius: 9px; white-space: normal; }
+.popover button:hover { background: var(--accent); color: var(--on-accent); }
 
-.popover .row { display: flex; align-items: center; gap: 9px; }
-/* Theme icons */
+/* Menus: rounded rows highlighted in the accent colour. */
+.menu, #contextMenu { width: 236px; padding: 6px; border-radius: 14px; }
+.menu .row, #contextMenu .row { display: flex; align-items: center; gap: 8px; min-height: 24px; padding: 4px 10px; border-radius: 8px; }
+.menu .row:focus-visible, #contextMenu .row:focus-visible { outline: none; background: var(--accent); color: var(--on-accent); }
+/* Checked items show a checkmark in the leading column. */
+.menu .row, #formatPanel .row { position: relative; padding-left: 26px; }
+.row[aria-checked="true"]::before, #formatPanel .row.active::before { content: "\2713"; position: absolute; left: 10px; font-size: 12px; font-weight: 600; }
+.menu-separator { height: 1px; margin: 5px 10px; background: var(--separator); }
+#contextMenu .row.destructive { color: var(--destructive); }
+#contextMenu .row.destructive:hover, #contextMenu .row.destructive:focus-visible { background: var(--destructive); color: var(--on-accent); }
+#contextMenu { position: fixed; right: auto; bottom: auto; z-index: 30; width: 224px; max-height: 340px; transform-origin: top left; }
+#contextMenu .row { overflow-wrap: anywhere; }
 
-:root[data-theme="dark"] .icon-moon,
-:root:not([data-theme="dark"]) .icon-sun { display: none; }
+/* Format popover: a font list and a size stepper. */
+#formatPanel { width: 228px; }
+#formatPanel .row { display: block; min-height: 24px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.panel-label { padding: 6px 10px 3px; color: var(--secondary-label); font-size: 11px; font-weight: 600; }
 
-/* Timer panel */
+/* Segmented controls: a capsule track with a raised capsule thumb. */
+.size-stepper, .timer-presets { display: flex; gap: 0; padding: 2px; border-radius: 999px; background: var(--fill-strong); }
+.size-stepper { margin: 4px 6px 6px; }
+.popover .size-stepper button, .popover .timer-presets button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0;
+  border-radius: 999px;
+  color: var(--label);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+.popover .size-stepper button:hover, .popover .timer-presets button:hover { background: var(--fill); color: var(--label); }
+.popover .size-stepper button:disabled { color: var(--tertiary-label); background: none; }
+.popover #sizeBtn, .popover .timer-presets button.active { background: var(--thumb); box-shadow: var(--thumb-shadow); }
+#sizeDown span { font-size: 10px; }
+#sizeUp span { font-size: 15px; }
 
-#timerPanel { width: 232px; padding: 12px; }
+/* Timer popover */
+
+#timerPanel { width: 248px; padding: 14px; }
 .timer-set { display: flex; align-items: center; justify-content: space-between; }
-#timerValue { font-size: 28px; font-variant-numeric: tabular-nums; }
+#timerValue { font: 300 34px/40px var(--font-display); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .popover #timerLess, .popover #timerMore {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 30px;
   height: 30px;
   padding: 0;
   border-radius: 50%;
-  color: var(--ink3);
-  font-size: 18px;
-  line-height: 30px;
-  text-align: center;
+  background: var(--fill-strong);
+  color: var(--label);
+  font-size: 17px;
 }
-.popover #timerLess:hover, .popover #timerMore:hover { color: var(--ink); }
-.timer-presets { display: flex; gap: 2px; margin: 10px 0 12px; }
-.popover .timer-presets button { flex: 1; padding: 5px 0; color: var(--ink3); text-align: center; }
-.popover .timer-presets button:hover { color: var(--ink); }
-.popover .timer-presets button.active { background: var(--card2); color: var(--ink); }
-.timer-actions { display: flex; gap: 6px; }
-.popover .timer-actions button { flex: 1; padding: 7px 0; border-radius: 999px; text-align: center; }
-.popover #timerReset { color: var(--ink3); }
-.popover #timerReset:hover { color: var(--ink); }
-.popover #timerStart { background: var(--ink); color: var(--paper); }
-.popover #timerStart:hover { background: var(--ink); opacity: 0.85; }
+.popover #timerLess:hover, .popover #timerMore:hover { background: var(--selection); color: var(--label); }
+.timer-presets { margin: 12px 0 14px; }
+.timer-actions { display: flex; gap: 8px; }
 
-/* History timeline */
+/* Push buttons: capsules. The prominent one is tinted glass in the accent colour. */
+.popover .timer-actions button, .alert-buttons button, #guideClose {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--fill-strong);
+  color: var(--label);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  transition: filter 0.12s ease, transform 0.12s ease;
+}
+.popover .timer-actions button:hover, .alert-buttons button:hover { background: var(--selection); color: var(--label); }
+.popover #timerStart, .alert-buttons .default, #guideClose {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 82%, #fff), var(--accent));
+  color: var(--on-accent);
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.45), 0 2px 8px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.popover #timerStart:hover, .alert-buttons .default:hover, #guideClose:hover { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 82%, #fff), var(--accent)); color: var(--on-accent); filter: brightness(1.06); }
+.popover .timer-actions button:active, .alert-buttons button:active, #guideClose:active { transform: scale(0.97); }
+.alert-buttons .destructive { color: var(--destructive); }
+
+/* Sidebar: a floating glass panel, inset from the window edge. */
 
 #sidebar {
-  flex: none;
+  position: absolute;
+  z-index: 4;
+  top: var(--inset);
+  bottom: var(--inset);
+  left: var(--inset);
   display: flex;
   flex-direction: column;
-  width: 260px;
-  border-right: 1px solid var(--hair);
+  width: var(--sidebar-width);
+  border-radius: 18px;
 }
-#historyHeader { display: flex; flex-direction: column; gap: 3px; padding: 44px 20px 14px; border-bottom: 1px solid var(--hair); }
-[data-platform="win32"] #historyHeader { padding-top: 16px; }
-.history-title { font-size: 13px; font-weight: 600; }
-.history-path { overflow: hidden; color: var(--ink3); font-size: 10px; text-overflow: ellipsis; }
-#historyHeader:hover .history-path { color: var(--ink); }
+#sidebar::before { background: var(--glass-sheen), var(--glass-strong); }
+.sidebar-top { flex: none; height: 44px; }
+[data-platform="win32"] .sidebar-top { height: 10px; }
+.sidebar-section { display: flex; align-items: center; gap: 0; padding: 2px 8px 4px 16px; }
+.section-title { flex: 1; color: var(--secondary-label); font-size: 11px; font-weight: 700; line-height: 22px; }
+#entryList { flex: 1; min-height: 0; overflow-y: auto; padding: 2px 8px 12px; }
+#statusBar { flex: none; padding: 8px 12px 10px; color: var(--secondary-label); font-size: 11px; line-height: 14px; text-align: center; }
 
-
-#entryList { flex: 1; min-height: 0; overflow-y: auto; padding: 0 12px 16px 20px; }
-
-.day-label { margin: 12px 0 6px; color: var(--ink3); font-size: 11px; font-weight: 600; }
-.entry-time { margin-top: 2px; color: var(--ink3); font-size: 11px; }
+.entry-time { margin-top: 2px; color: var(--secondary-label); font-size: 11px; }
 
 /* Files and folders share one grid, like a Finder window in icon view. */
-.file-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 2px; }
+.file-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 0 2px; }
 
-.entry {
+.entry, .folder {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   min-width: 0;
-  padding: 7px 3px 6px;
-  border-radius: 8px;
-  cursor: pointer;
+  padding: 8px 2px 6px;
+  border-radius: 12px;
+  transition: background-color 0.12s ease;
 }
-.entry:hover { background: var(--card2); }
-.entry.dragging, .folder.dragging { opacity: 0.5; }
+.entry:hover, .folder[role="button"]:hover { background: var(--fill-strong); }
+.entry:focus-visible, .folder:focus-visible { outline: 3px solid var(--focus-ring); border-radius: 12px; }
+.entry.dragging, .folder.dragging { opacity: 0.45; }
 .entry-page {
   flex: none;
   width: 40px;
   height: 50px;
-  margin-bottom: 4px;
+  margin-bottom: 5px;
   padding: 5px 4px;
   overflow: hidden;
-  border: 1px solid var(--hair);
-  border-radius: 3px;
-  background: var(--page);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
+  background: #ffffff;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.16), 0 2px 5px rgba(0, 0, 0, 0.12);
   pointer-events: none;
 }
-.entry-page-text { color: var(--ink2); font-family: var(--editor-font); font-size: 4px; line-height: 1.35; overflow-wrap: anywhere; white-space: pre-wrap; }
-.entry > .entry-preview {
+:root[data-theme="dark"] .entry-page { background: #2c2c2e; box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.12), 0 2px 5px rgba(0, 0, 0, 0.4); }
+.entry-page-text { color: var(--secondary-label); font-family: var(--editor-font); font-size: 4px; line-height: 1.35; overflow-wrap: anywhere; white-space: pre-wrap; }
+.entry > .entry-preview, .folder > .folder-name {
   display: -webkit-box;
   max-width: 100%;
-  padding: 1px 4px;
+  padding: 1px 6px;
   overflow: hidden;
-  border-radius: 4px;
-  color: var(--ink2);
+  border-radius: 6px;
+  color: var(--label);
   font-size: 11px;
-  line-height: 1.25;
+  font-weight: 500;
+  line-height: 14px;
   overflow-wrap: anywhere;
   text-align: center;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   pointer-events: none;
 }
-.entry > .entry-time { margin-top: 1px; font-size: 10px; text-align: center; pointer-events: none; }
-/* Selected like Finder: a soft box behind the page, and the name in blue. */
-.entry.selected .entry-page { outline: 3px solid var(--card2); }
-.entry.selected > .entry-preview { background: #2f6fde; color: #fff; }
+.entry > .entry-time { margin-top: 2px; font-size: 10px; line-height: 13px; text-align: center; pointer-events: none; }
+/* Selected like Finder: a soft box behind the icon, and the name on an accent capsule. */
+.entry.selected { background: var(--fill-strong); }
+.entry.selected > .entry-preview { background: var(--accent); color: var(--on-accent); }
 
-.entry-actions { display: none; flex: none; gap: 8px; color: var(--ink3); }
+/* Small borderless icon buttons. */
+.entry-actions { display: none; flex: none; align-items: center; gap: 2px; color: var(--secondary-label); }
+.entry-actions button { display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; }
+.entry-actions button:hover { background: var(--fill-strong); color: var(--label); }
+.entry-actions button:active { background: var(--selection); }
+.entry-actions .icon { width: 15px; height: 15px; }
+.entry-actions .trash:hover { color: var(--destructive); }
+/* On a file, the actions float on a small glass capsule. */
 .entry > .entry-actions {
   position: absolute;
-  top: 2px;
-  right: 2px;
+  top: 3px;
+  right: 3px;
   z-index: 1;
-  gap: 1px;
+  gap: 0;
   padding: 2px;
-  border-radius: 6px;
-  background: var(--card);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
 }
+.entry > .entry-actions button { width: 20px; height: 20px; }
+.entry > .entry-actions .icon { width: 12px; height: 12px; }
 .entry:hover > .entry-actions { display: flex; }
-.entry > .entry-actions button { padding: 2px; border-radius: 4px; }
-.entry-actions button:hover { color: var(--ink); }
-.entry-actions .icon { width: 12px; height: 12px; }
-.entry-actions .trash:hover { color: var(--rec); }
 
 /* Folders */
 
-.folders-head { display: flex; align-items: center; justify-content: space-between; }
-.new-folder { padding: 3px; border-radius: 6px; color: var(--ink3); margin-top: 6px; }
-.new-folder:hover { background: var(--card2); color: var(--ink); }
-.new-folder .icon { width: 12px; height: 12px; }
-.folder { display: flex; flex-direction: column; align-items: center; min-width: 0; padding: 7px 3px 6px; border-radius: 8px; }
-.folder[role="button"] { cursor: pointer; }
-.folder[role="button"]:hover { background: var(--card2); }
-.folder:focus-visible { outline: 1.5px solid var(--ink3); }
-.folder-icon { flex: none; display: block; width: 50px; height: 41px; }
-.folder > .folder-icon { margin: 9px 0 4px; }
+.folder-icon { flex: none; display: block; width: 52px; height: 42px; filter: drop-shadow(0 2px 3px rgba(0, 60, 140, 0.18)); }
+.folder > .folder-icon { margin: 8px 0 5px; }
 /* Keeps a drag from flickering as it crosses the icon and the name. */
-.folder > .folder-icon, .folder > .folder-name { pointer-events: none; }
-.folder > .folder-name { display: -webkit-box; max-width: 100%; overflow: hidden; color: var(--ink2); font-size: 11px; line-height: 1.25; overflow-wrap: anywhere; text-align: center; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.folder-input { width: 100%; min-width: 0; padding: 1px 3px; border: 1px solid #4fa9ee; border-radius: 4px; outline: 0; background: var(--paper); color: var(--ink); font: inherit; font-size: 11px; text-align: center; }
-.folder-input.invalid { border-color: var(--rec); }
-.drop-target { background: color-mix(in srgb, #4fa9ee 25%, transparent) !important; border-radius: 8px; }
+.folder > .folder-icon { pointer-events: none; }
+.folder-input {
+  width: 100%;
+  min-width: 0;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 6px;
+  outline: 3px solid var(--focus-ring);
+  background: var(--page);
+  color: var(--label);
+  font: inherit;
+  font-size: 11px;
+  text-align: center;
+}
+.folder-input.invalid { outline-color: color-mix(in srgb, var(--destructive) 55%, transparent); }
+.drop-target { background: color-mix(in srgb, var(--accent) 18%, transparent) !important; box-shadow: inset 0 0 0 2px var(--accent); }
 
-.folder-head { position: sticky; top: 0; z-index: 1; margin-right: -4px; padding: 10px 0 4px; background: var(--paper); }
-.folder-back { display: inline-flex; align-items: center; gap: 3px; margin-left: -4px; padding: 3px 8px 3px 3px; border-radius: 6px; color: var(--ink3); font-size: 12px; }
-.folder-back:hover { background: var(--card2); color: var(--ink); }
-.folder-title { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-.folder-title .folder-icon { width: 30px; height: 25px; }
-.folder-title .folder-name { flex: 1; min-width: 0; overflow: hidden; font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.folder-head { position: sticky; top: 0; z-index: 2; margin: 0 -8px; padding: 6px 12px 6px; -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); background: color-mix(in srgb, var(--glass-strong) 60%, transparent); }
+.folder-back { display: inline-flex; align-items: center; gap: 2px; height: 26px; padding: 0 10px 0 4px; border-radius: 999px; background: var(--fill); color: var(--label); font-size: 12px; font-weight: 500; }
+.folder-back .icon { width: 14px; height: 14px; }
+.folder-back:hover { background: var(--fill-strong); }
+.folder-title { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding-left: 2px; }
+.folder-title .folder-icon { width: 30px; height: 24px; }
+.folder-title .folder-name { flex: 1; min-width: 0; overflow: hidden; color: var(--label); font: 700 17px/22px var(--font-display); letter-spacing: -0.015em; text-overflow: ellipsis; white-space: nowrap; }
 .folder-title .folder-input { flex: 1; font-size: 13px; text-align: left; }
 .folder-title .entry-actions { display: flex; }
-.folder-confirm { margin-top: 10px; padding: 10px; border: 1px solid var(--hair); border-radius: 10px; background: var(--card); }
-.folder-confirm p { margin: 0 0 9px; color: var(--ink2); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
-.folder-confirm-buttons { display: flex; justify-content: flex-end; gap: 6px; }
-.folder-confirm-buttons button { padding: 4px 10px; border-radius: 999px; color: var(--ink2); font-size: 12px; }
-.folder-confirm-buttons button:hover { background: var(--card2); color: var(--ink); }
-.folder-confirm-buttons .danger { background: var(--rec); color: #fff; }
-.folder-confirm-buttons .danger:hover { background: var(--rec); color: #fff; opacity: 0.85; }
-.folder-notice { margin: 10px 0 0; color: var(--rec); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
-.folder-empty { margin-top: 14px; color: var(--ink3); font-size: 12px; line-height: 1.5; }
+.folder-empty { margin: 20px 12px 0; color: var(--secondary-label); font-size: 12px; line-height: 16px; text-align: center; }
 
-#movePopover { position: fixed; right: auto; bottom: auto; z-index: 10; width: 190px; max-height: 260px; }
-#movePopover button { overflow-wrap: anywhere; }
+/* Alert: a centred glass sheet with the app icon and capsule buttons. */
 
-#credit { padding: 12px 20px; border-top: 1px solid var(--hair); color: var(--ink3); font-size: 10px; }
-.logo { display: block; height: 17px; margin-bottom: 5px; fill: none; stroke: var(--ink); stroke-linecap: round; stroke-linejoin: round; }
+#alert { position: fixed; inset: 0; z-index: 40; display: flex; align-items: flex-start; justify-content: center; padding-top: 18vh; background: rgba(0, 0, 0, 0.1); }
+:root[data-theme="dark"] #alert { background: rgba(0, 0, 0, 0.32); }
+.alert-panel { width: 280px; padding: 22px 18px 18px; border-radius: 26px; text-align: center; animation: pop-in 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.2); }
+.alert-panel .mark { width: 44px; height: 44px; margin: 0 auto 12px; color: var(--label); }
+#alertTitle { margin: 0 0 6px; font: 700 15px/19px var(--font-display); letter-spacing: -0.01em; overflow-wrap: anywhere; }
+#alertMessage { margin: 0 0 18px; color: var(--secondary-label); font-size: 12px; line-height: 16px; white-space: pre-line; overflow-wrap: anywhere; }
+.alert-buttons { display: flex; gap: 8px; }
 
-/* Search */
+/* Search: a Spotlight-style glass capsule. */
 
-#spotlight { position: fixed; inset: 0; z-index: 15; background: rgba(0, 0, 0, 0.12); }
-:root[data-theme="dark"] #spotlight { background: rgba(0, 0, 0, 0.35); }
-.spotlight-panel {
-  width: 600px;
-  margin: 110px auto 0;
-  overflow: hidden;
-  border: 1px solid var(--hair);
-  border-radius: 14px;
-  background: var(--card);
-  box-shadow: var(--shadow);
-}
-.spotlight-field { display: flex; align-items: center; gap: 10px; padding: 14px 16px; color: var(--ink3); }
-.spotlight-field .icon { width: 18px; height: 18px; }
+#spotlight { position: fixed; inset: 0; z-index: 15; background: rgba(0, 0, 0, 0.08); }
+:root[data-theme="dark"] #spotlight { background: rgba(0, 0, 0, 0.3); }
+.spotlight-panel { width: 620px; margin: 100px auto 0; border-radius: 28px; animation: pop-in 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.2); }
+.spotlight-field { display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 22px; color: var(--secondary-label); }
+.spotlight-field .icon { width: 22px; height: 22px; }
 #search {
   flex: 1;
   min-width: 0;
   border: 0;
   outline: 0;
   background: transparent;
-  color: var(--ink);
-  font: inherit;
-  font-size: 20px;
+  color: var(--label);
+  font: 400 22px/28px var(--font-display);
+  letter-spacing: -0.015em;
   -webkit-appearance: none;
 }
-#search::placeholder { color: var(--ink3); }
-#searchResults { max-height: 320px; overflow-y: auto; padding: 6px; border-top: 1px solid var(--hair); }
-.result { display: block; box-sizing: border-box; width: 100%; padding: 8px 10px; border-radius: 8px; white-space: normal; }
-.result.active { background: var(--card2); }
-.result-snippet { color: var(--ink2); font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
-.result mark { border-radius: 2px; background: color-mix(in srgb, var(--ink) 18%, transparent); color: var(--ink); }
-.result-empty { padding: 10px; color: var(--ink3); font-size: 13px; }
-#searchHint { margin-left: auto; color: var(--ink3); font: inherit; font-size: 12px; }
+#search::placeholder { color: var(--tertiary-label); }
+#searchResults { max-height: 340px; overflow-y: auto; margin: 0 8px 8px; padding: 6px 0 0; border-top: 1px solid var(--separator); }
+.result { display: block; box-sizing: border-box; width: 100%; padding: 8px 14px; border-radius: 14px; white-space: normal; }
+.result.active { background: var(--accent); color: var(--on-accent); }
+.result-snippet { color: var(--label); font-size: 13px; line-height: 18px; overflow-wrap: anywhere; }
+.result.active .result-snippet, .result.active .entry-time { color: var(--on-accent); }
+.result mark { border-radius: 3px; background: color-mix(in srgb, #ffcc00 45%, transparent); color: inherit; }
+.result.active mark { background: rgba(255, 255, 255, 0.3); }
+.result-empty { padding: 12px 14px; color: var(--secondary-label); font-size: 13px; }
 
-/* Welcome guide */
+/* Welcome: a glass card over a soft wash of colour, like the first run of an Apple app. */
 
 #guide {
   position: fixed;
   inset: 0;
   z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow-y: auto;
-  background: var(--paper);
+  padding: 32px;
+  background:
+    radial-gradient(60% 50% at 20% 20%, color-mix(in srgb, var(--accent) 28%, transparent), transparent 70%),
+    radial-gradient(50% 50% at 85% 30%, rgba(175, 82, 222, 0.22), transparent 70%),
+    radial-gradient(60% 60% at 60% 95%, rgba(255, 149, 0, 0.18), transparent 70%),
+    var(--window);
 }
-.guide-page { max-width: 540px; margin: 0 auto; padding: 40px 24px 24px; }
-.guide-mark { display: block; width: 36px; height: 36px; color: var(--ink); }
-#guide h1 { margin: 20px 0 12px; font: 400 30px/1.25 "Literata", Georgia, serif; }
-.guide-intro { margin: 0 0 22px; color: var(--ink2); font: 16px/1.6 "Literata", Georgia, serif; }
-#guide ol { margin: 0 0 20px; padding-left: 20px; font-size: 14px; line-height: 1.55; }
-#guide li { margin-bottom: 9px; padding-left: 4px; color: var(--ink2); }
-#guide li strong { color: var(--ink); font-weight: 600; }
-.guide-note { margin: 0 0 7px; color: var(--ink3); font-size: 13px; line-height: 1.5; }
-#guideClose { display: inline-block; margin: 18px 0 20px; padding: 9px 20px; border-radius: 999px; background: var(--ink); color: var(--paper); font-size: 14px; }
-#guideClose:hover { opacity: 0.85; }
-#guideClose:focus-visible { outline: none; }
-.guide-credit { margin: 0; color: var(--ink3); font-size: 11px; }
+.guide-page { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 500px; margin: auto; padding: 40px 36px 28px; border-radius: 32px; text-align: center; }
+.app-icon { display: flex; align-items: center; justify-content: center; width: 76px; height: 76px; border-radius: 18px; background: linear-gradient(160deg, #ffffff, #e6e6ec); box-shadow: inset 0 0.5px 0 #fff, 0 0 0 0.5px rgba(0, 0, 0, 0.12), 0 8px 20px rgba(0, 0, 0, 0.16); }
+:root[data-theme="dark"] .app-icon { background: linear-gradient(160deg, #48484c, #262628); box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.25), 0 8px 20px rgba(0, 0, 0, 0.5); }
+.guide-mark { display: block; width: 42px; height: 42px; color: var(--label); }
+#guide h1 { margin: 20px 0 8px; color: var(--label); font: 700 28px/34px var(--font-display); letter-spacing: -0.022em; }
+.guide-intro { margin: 0 0 28px; color: var(--secondary-label); font-size: 13px; line-height: 18px; }
+.features { display: flex; flex-direction: column; gap: 18px; width: 100%; margin: 0 0 30px; padding: 0; list-style: none; text-align: left; }
+.features li { display: flex; align-items: flex-start; gap: 14px; }
+.feature-icon { flex: none; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+.feature-icon .icon { width: 20px; height: 20px; }
+.features strong { display: block; margin-bottom: 2px; color: var(--label); font-size: 13px; font-weight: 600; line-height: 16px; }
+.features li > span:last-child { color: var(--secondary-label); font-size: 12px; line-height: 16px; }
+#guideClose { flex: none; width: 240px; height: 32px; margin: 0 0 18px; }
+.guide-credit { margin: 0; color: var(--tertiary-label); font-size: 11px; }

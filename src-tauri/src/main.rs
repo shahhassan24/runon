@@ -285,8 +285,9 @@ fn list_fonts() -> Result<Vec<String>, String> {
 }
 
 #[tauri::command]
-fn set_theme(window: WebviewWindow, dark: bool) -> Result<(), String> {
-    window.set_theme(Some(if dark { Theme::Dark } else { Theme::Light })).map_err(|e| e.to_string())
+/// No choice (None) follows the system appearance.
+fn set_theme(window: WebviewWindow, dark: Option<bool>) -> Result<(), String> {
+    window.set_theme(dark.map(|dark| if dark { Theme::Dark } else { Theme::Light })).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

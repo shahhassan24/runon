@@ -25,25 +25,25 @@ Runon is built around that rule. There are no formatting tools or accounts. You 
 ## How it works
 
 1. Pick something to write about, like a decision, a problem at work, or a new idea.
-2. Open **Menu** and click **Fullscreen**.
-3. Click the **time**, choose how long you want, and click **Start**. The controls fade away, leaving only your words and a thin line that grows as time passes.
-4. Keep writing until the controls fade back in.
+2. Click the **More** button (⋯) in the toolbar and choose **Enter Full Screen**.
+3. Click the **time** in the toolbar, choose how long you want, and click **Start**. The toolbar fades away, leaving only your words and a thin line that grows as time passes.
+4. Keep writing until the toolbar fades back in.
 
-Turn **Backspace off** in the menu if you want to make going back impossible.
+Turn off **Allow Backspace** in the More menu if you want to make going back impossible.
 
 ## Features
 
 - **The line:** a thin line grows across the bottom of the screen as your timer runs. It's the only thing on screen besides your words.
 - **Timer:** pick a preset from 5 to 45 minutes or set anything from 1 to 120. Runon remembers your last choice.
-- **Backspace off:** blocks the Backspace and Delete keys so you keep moving forward.
+- **Allow Backspace:** turn it off to block the Backspace and Delete keys so you keep moving forward.
 - **Autosave:** there's no save button. New entries are ready to write in as soon as you click **New Entry**.
 - **The line keeps you going:** stop typing during a timed session and the line slowly fades. It comes back as soon as you type.
 - **Session summary:** when the timer ends, Runon shows how much you wrote, like "412 words in 15 minutes".
-- **Search:** press Cmd+F (Ctrl+F on Windows) to open a floating search, like Spotlight. Results appear as you type, and arrow keys and Return open them.
+- **Search:** click the search field in the toolbar or press Cmd+F (Ctrl+F on Windows) to open a floating search, like Spotlight. Results appear as you type, and arrow keys and Return open them.
 - **History:** browse past entries as files, each showing the start of what you wrote, export them as PDFs, or move them to the Trash.
 - **Folders:** group entries in History, with folders inside folders as deep as you like. Click a folder to see what's inside, and drag an entry or a folder onto another folder to move it.
 - **Chat, if you want it:** after a long session, send an entry to ChatGPT or Claude to talk it through.
-- **Your look:** light and dark themes, several text sizes, and Literata, Arial, System, Times, or a random font from your computer.
+- **Your look:** follows Light or Dark in System Settings, or pick one yourself. The **Aa** button sets the text size and the font: Literata, Arial, System, Times, or a random font from your computer.
 
 <p align="center">
   <img src="docs/screenshots/history-dark.png" alt="Runon in dark mode with the history timeline open, listing past entries grouped by day" width="800">

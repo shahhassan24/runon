@@ -7,111 +7,107 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div class="drag-strip" data-tauri-drag-region></div>
 <div id="app">
-  <aside id="sidebar" hidden>
-    <button id="historyHeader" type="button">
-      <span class="history-title">History <span aria-hidden="true">↗</span></span>
-      <span class="history-path" id="historyPath"></span>
-    </button>
-    <div id="entryList"></div>
-    <div id="credit">
-      <svg class="logo" viewBox="-1 -15.5 352 71" role="img" aria-label="Runon"><g stroke-width="8.8" transform="translate(0 -22.5) scale(.85)"><path d="M13 78V40C13 28 21 22 33 22C53 22 65 36 87 36"/></g><g stroke-width="7.5" transform="translate(103 0)"><path d="M0 40V12C0 4 6 0 15 0"/><path d="M35 0V24A16 16 0 0 0 67 24M67 0V40"/><path d="M87 40V16A16 16 0 0 1 119 16V40"/><path d="M139 20A20 20 0 1 1 179 20A20 20 0 1 1 139 20Z"/><path d="M199 40V16A16 16 0 0 1 231 16V40"/></g></svg>
-      <span>Built by Shah Hassan</span>
+  <aside id="sidebar" hidden aria-label="History">
+    <div class="sidebar-top" data-tauri-drag-region></div>
+    <div class="sidebar-section">
+      <span class="section-title">History</span>
+      <button id="newFolderBtn" class="toolbar-btn small" type="button" title="New Folder" aria-label="New Folder"><svg viewBox="0 0 16 16" class="icon" aria-hidden="true"><path class="stroke" d="M2 4.500V12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.500 3.500H3a1 1 0 0 0-1 1zM8 7v4M6 9h4"/></svg></button>
+      <button id="historyHeader" class="toolbar-btn small" type="button" title="Show in Finder" aria-label="Show in Finder"><svg viewBox="0 0 16 16" class="icon" aria-hidden="true"><path class="stroke" d="M9.500 2.500h4v4M13.500 2.500 8 8M12 9.500V13H3V4h3.500"/></svg></button>
+      <span id="historyPath" hidden></span>
     </div>
+    <div id="entryList"></div>
+    <div id="statusBar" aria-live="polite"></div>
   </aside>
 
   <main id="main">
-    <header id="topbar">
-      <button id="topLogo" type="button" title="Show or hide History" aria-label="Show or hide History">
-        <svg viewBox="0 0 100 100" class="mark"><path d="M13 78V40C13 28 21 22 33 22C53 22 65 36 87 36"/></svg>
-      </button>
-      <div id="entryDate"></div>
+    <header id="topbar" data-tauri-drag-region>
+      <div class="glass-group"><button id="historyBtn" class="toolbar-btn" type="button" title="Show Sidebar" aria-label="Show Sidebar"><svg viewBox="0 0 16 16" class="icon" aria-hidden="true"><rect class="stroke" x="1.750" y="2.750" width="12.500" height="10.500" rx="2"/><path class="stroke" d="M6 2.750v10.500M3.500 5.500h1M3.500 7.500h1"/></svg></button></div>
+      <div class="window-title" data-tauri-drag-region>
+        <div id="entryDate" data-tauri-drag-region></div>
+        <div id="entryMeta" data-tauri-drag-region></div>
+      </div>
+      <nav id="nav" aria-label="Toolbar">
+        <div class="glass-group">
+        <button id="newEntryBtn" class="toolbar-btn" type="button" title="New Entry" aria-label="New Entry"><svg viewBox="0 0 16 16" class="icon" aria-hidden="true"><path class="stroke" d="M13.500 8.500V13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.500a1 1 0 0 1 1-1h4.500"/><path class="stroke" d="M12 1.750 14.250 4 8.500 9.750 6 10.250l.5-2.500z"/></svg></button>
+        <div class="anchor">
+          <button id="formatBtn" class="toolbar-btn" type="button" title="Font and Size" aria-label="Font and Size"><span class="format-glyph" aria-hidden="true">Aa</span></button>
+          <div class="popover" id="formatPanel" role="dialog" aria-label="Font and Size" hidden>
+            <div class="panel-label">Font</div>
+            <div id="fontNav" role="group" aria-label="Font">
+              <button class="row font-btn" type="button" data-font="Literata">Literata</button>
+              <button class="row font-btn" type="button" data-font="Arial">Arial</button>
+              <button class="row font-btn" type="button" data-font="System">System</button>
+              <button class="row font-btn" type="button" data-font="Serif">Times</button>
+              <button class="row" id="randomBtn" type="button">Random</button>
+            </div>
+            <div class="menu-separator" role="separator"></div>
+            <div class="panel-label">Size</div>
+            <div class="size-stepper">
+              <button id="sizeDown" type="button" title="Smaller" aria-label="Smaller"><span aria-hidden="true">A</span></button>
+              <button id="sizeBtn" type="button" title="Next size">18 pt</button>
+              <button id="sizeUp" type="button" title="Bigger" aria-label="Bigger"><span aria-hidden="true">A</span></button>
+            </div>
+          </div>
+        </div>
+        <div class="anchor">
+          <button id="timerBtn" class="toolbar-btn timer-btn" type="button" title="Timer"><svg viewBox="0 0 16 16" class="icon" aria-hidden="true"><circle class="stroke" cx="8" cy="9" r="5.250"/><path class="stroke" d="M8 6v3l2 1.250M6.500 1.750h3"/></svg><span id="timerText">15:00</span></button>
+          <div class="popover" id="timerPanel" role="dialog" aria-label="Timer" hidden>
+            <div class="timer-set">
+              <button id="timerLess" type="button" aria-label="One minute less">−</button>
+              <span id="timerValue">15:00</span>
+              <button id="timerMore" type="button" aria-label="One minute more">+</button>
+            </div>
+            <div class="timer-presets" role="group" aria-label="Minutes">
+              <button type="button" data-minutes="5">5</button>
+              <button type="button" data-minutes="10">10</button>
+              <button type="button" data-minutes="15">15</button>
+              <button type="button" data-minutes="20">20</button>
+              <button type="button" data-minutes="30">30</button>
+              <button type="button" data-minutes="45">45</button>
+            </div>
+            <div class="timer-actions">
+              <button id="timerReset" type="button">Reset</button>
+              <button id="timerStart" type="button">Start</button>
+            </div>
+          </div>
+        </div>
+        <div class="anchor">
+          <button id="menuBtn" class="toolbar-btn" type="button" title="More" aria-label="More"><svg viewBox="0 0 16 16" class="icon" aria-hidden="true"><circle class="stroke" cx="8" cy="8" r="6.250"/><circle cx="5.250" cy="8" r=".9"/><circle cx="8" cy="8" r=".9"/><circle cx="10.750" cy="8" r=".9"/></svg></button>
+          <div class="popover menu" id="menu" role="menu" aria-label="More" hidden>
+            <button id="chatBtn" class="row" type="button" role="menuitem">Chat About This Entry…</button>
+            <div class="menu-separator" role="separator"></div>
+            <button id="backspaceBtn" class="row" type="button" role="menuitemcheckbox" aria-checked="true"><span id="backspaceLabel">Allow Backspace</span></button>
+            <button id="themeBtn" class="row" type="button" role="menuitemcheckbox" aria-checked="false"><span id="themeLabel">Dark Mode</span></button>
+            <div class="menu-separator" role="separator"></div>
+            <button id="fullscreenBtn" class="row" type="button" role="menuitem"><span id="fullscreenLabel">Enter Full Screen</span></button>
+            <div class="menu-separator" role="separator"></div>
+            <button id="guideBtn" class="row" type="button" role="menuitem">Welcome to Runon</button>
+            <button id="aboutBtn" class="row" type="button" role="menuitem">About Runon</button>
+          </div>
+          <div class="popover" id="chatPopover" hidden></div>
+        </div>
+        </div>
+        <div class="glass-group search-group"><button id="searchBtn" class="search-field" type="button" title="Search"><svg viewBox="0 0 16 16" class="icon" aria-hidden="true"><circle class="stroke" cx="7" cy="7" r="4.500"/><path class="stroke" d="m10.500 10.500 3 3"/></svg><span>Search</span><kbd id="searchHint"></kbd></button></div>
+      </nav>
     </header>
     <textarea id="editor" spellcheck="false" aria-label="Your entry"></textarea>
-
-    <nav id="nav">
-      <button id="historyBtn" class="nav-btn" type="button">
-        <svg viewBox="0 0 16 16" class="icon"><path class="stroke" d="M2.5 8a5.5 5.5 0 1 0 1.7-4M2.3 2.2v2.6h2.6M8 5v3.3l2.2 1.3"/></svg>
-        History
-      </button>
-      <button id="newEntryBtn" class="nav-btn" type="button">
-        <svg viewBox="0 0 16 16" class="icon"><path class="stroke" d="M8 3v10M3 8h10"/></svg>
-        New Entry
-      </button>
-      <div id="fontNav">
-        <button id="sizeBtn" class="nav-btn" type="button" title="Change text size">18px</button>
-        <button class="nav-btn font-btn" type="button" data-font="Literata">Literata</button>
-        <button class="nav-btn font-btn" type="button" data-font="Arial">Arial</button>
-        <button class="nav-btn font-btn" type="button" data-font="System">System</button>
-        <button class="nav-btn font-btn" type="button" data-font="Serif">Times</button>
-        <button class="nav-btn" id="randomBtn" type="button">Random</button>
-      </div>
-      <div class="nav-spacer"></div>
-      <div class="anchor">
-        <button id="timerBtn" class="nav-btn" type="button" title="Set the timer">15:00</button>
-        <div class="popover" id="timerPanel" hidden>
-          <div class="timer-set">
-            <button id="timerLess" type="button" aria-label="One minute less">−</button>
-            <span id="timerValue">15:00</span>
-            <button id="timerMore" type="button" aria-label="One minute more">+</button>
-          </div>
-          <div class="timer-presets">
-            <button type="button" data-minutes="5">5</button>
-            <button type="button" data-minutes="10">10</button>
-            <button type="button" data-minutes="15">15</button>
-            <button type="button" data-minutes="20">20</button>
-            <button type="button" data-minutes="30">30</button>
-            <button type="button" data-minutes="45">45</button>
-          </div>
-          <div class="timer-actions">
-            <button id="timerReset" type="button">Reset</button>
-            <button id="timerStart" type="button">Start</button>
-          </div>
-        </div>
-      </div>
-      <div class="anchor">
-        <button id="menuBtn" class="nav-btn" type="button">
-          <svg viewBox="0 0 100 100" class="mark"><path d="M13 78V40C13 28 21 22 33 22C53 22 65 36 87 36"/></svg>
-          Menu
-        </button>
-
-        <div class="popover menu" id="menu" hidden>
-          <button id="searchBtn" class="row" type="button">
-            <svg viewBox="0 0 16 16" class="icon"><circle class="stroke" cx="7" cy="7" r="4.5"/><path class="stroke" d="m10.5 10.5 3 3"/></svg>
-            Search
-            <kbd id="searchHint"></kbd>
-          </button>
-          <button id="chatBtn" class="row" type="button">
-            <svg viewBox="0 0 16 16" class="icon"><path class="stroke" d="M2.5 3.5h11v7.5H7L4 13.5V11H2.5z"/></svg>
-            Chat about this entry
-          </button>
-          <button id="backspaceBtn" class="row" type="button">
-            <svg viewBox="0 0 16 16" class="icon"><path class="stroke" d="M6 3.5h7.5v9H6L2 8zM8 6.2l3 3.6M11 6.2 8 9.8"/></svg>
-            <span id="backspaceLabel">Backspace is On</span>
-          </button>
-          <button id="fullscreenBtn" class="row" type="button">
-            <svg viewBox="0 0 16 16" class="icon"><path class="stroke" d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg>
-            <span id="fullscreenLabel">Fullscreen</span>
-          </button>
-          <button id="guideBtn" class="row" type="button">
-            <svg viewBox="0 0 16 16" class="icon"><circle class="stroke" cx="8" cy="8" r="6"/><path class="stroke" d="M6.3 6.3a1.8 1.8 0 1 1 2.6 1.6c-.6.3-.9.7-.9 1.3M8 11.500v.1"/></svg>
-            Welcome guide
-          </button>
-          <button id="themeBtn" class="row" type="button">
-            <svg viewBox="0 0 16 16" class="icon icon-moon" id="moonIcon"><path d="M13.6 10.4A6.2 6.2 0 0 1 5.6 2.4a6.2 6.2 0 1 0 8 8z"/></svg>
-            <svg viewBox="0 0 16 16" class="icon icon-sun" id="sunIcon"><circle cx="8" cy="8" r="3.2"/><path class="stroke" d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6 13 13M13 3l-1.4 1.4M4.4 11.6 3 13"/></svg>
-            <span id="themeLabel">Dark mode</span>
-          </button>
-        </div>
-        <div class="popover" id="chatPopover" hidden></div>
-      </div>
-    </nav>
-
     <div id="runline"><div id="runlineFill"></div></div>
   </main>
 
-  <div class="popover" id="movePopover" hidden></div>
+  <div class="popover" id="contextMenu" role="menu" hidden></div>
+
+  <section id="alert" hidden>
+    <div class="alert-panel" role="alertdialog" aria-modal="true" aria-labelledby="alertTitle" aria-describedby="alertMessage">
+      <svg viewBox="0 0 100 100" class="mark" aria-hidden="true"><path d="M13 78V40C13 28 21 22 33 22C53 22 65 36 87 36"/></svg>
+      <h2 id="alertTitle"></h2>
+      <p id="alertMessage"></p>
+      <div class="alert-buttons">
+        <button id="alertCancel" type="button">Cancel</button>
+        <button id="alertConfirm" type="button">OK</button>
+      </div>
+    </div>
+  </section>
 
   <section id="spotlight" hidden>
     <div class="spotlight-panel" role="dialog" aria-label="Search all entries">
@@ -125,17 +121,28 @@
 
   <section id="guide" hidden aria-label="Welcome to Runon">
     <div class="guide-page">
-      <svg viewBox="0 0 100 100" class="mark guide-mark"><path d="M13 78V40C13 28 21 22 33 22C53 22 65 36 87 36"/></svg>
-      <h1>Begin anywhere. Don’t stop.</h1>
-      <p class="guide-intro">Runon is for freewriting: writing without stopping for a set time. Don’t fix your spelling or go back. Keep going, and you’ll find out what you actually think.</p>
-      <ol>
-        <li><strong>Pick something to write about.</strong> A decision, a problem at work, a new idea.</li>
-        <li><strong>Set the timer.</strong> Click the time at the bottom, choose how long, and click Start.</li>
-        <li><strong>Keep writing.</strong> The controls fade and a line grows across the screen. When the controls come back, you’re done.</li>
-      </ol>
-      <p class="guide-note">Want to make going back impossible? Turn Backspace off in Menu.</p>
-      <p class="guide-note">Your writing stays on your computer, in Documents/Runon. It only leaves if you choose to send it through Chat.</p>
-      <button id="guideClose" type="button">Start writing</button>
+      <div class="app-icon" aria-hidden="true"><svg viewBox="0 0 100 100" class="mark guide-mark"><path d="M13 78V40C13 28 21 22 33 22C53 22 65 36 87 36"/></svg></div>
+      <h1>Welcome to Runon</h1>
+      <p class="guide-intro">Begin anywhere. Don’t stop. Runon is for freewriting: writing without stopping for a set time, so you find out what you actually think.</p>
+      <ul class="features">
+        <li>
+          <span class="feature-icon"><svg viewBox="0 0 16 16" class="icon" aria-hidden="true"><path class="stroke" d="M8 2.500a4 4 0 0 0-2.500 7.100V11h5V9.600A4 4 0 0 0 8 2.500zM6 13.500h4"/></svg></span>
+          <span><strong>Pick something to write about</strong>A decision, a problem at work, a new idea.</span>
+        </li>
+        <li>
+          <span class="feature-icon"><svg viewBox="0 0 16 16" class="icon" aria-hidden="true"><circle class="stroke" cx="8" cy="9" r="5.250"/><path class="stroke" d="M8 6v3l2 1.250M6.500 1.750h3"/></svg></span>
+          <span><strong>Set the timer</strong>Click the time in the toolbar, choose how long, and click Start.</span>
+        </li>
+        <li>
+          <span class="feature-icon"><svg viewBox="0 0 16 16" class="icon" aria-hidden="true"><path class="stroke" d="M2.500 12.500h11M3.500 9.500l6-6 2 2-6 6H3.500z"/></svg></span>
+          <span><strong>Keep writing</strong>The toolbar fades and a line grows along the bottom. When the toolbar comes back, you’re done. Want no going back? Turn off Allow Backspace.</span>
+        </li>
+        <li>
+          <span class="feature-icon"><svg viewBox="0 0 16 16" class="icon" aria-hidden="true"><rect class="stroke" x="3.500" y="7" width="9" height="6.500" rx="1.500"/><path class="stroke" d="M5.500 7V5a2.500 2.500 0 0 1 5 0v2"/></svg></span>
+          <span><strong>Private by design</strong>Your writing stays on this computer, in Documents/Runon. It only leaves if you choose Chat.</span>
+        </li>
+      </ul>
+      <button id="guideClose" type="button">Continue</button>
       <p class="guide-credit">Built by Shah Hassan. Based on Freewrite by Farza Majeed.</p>
     </div>
   </section>

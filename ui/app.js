@@ -47,8 +47,6 @@ const state = {
   folders: [],
   openFolder: null,
   renamingFolder: null,
-  confirmingDelete: null,
-  folderNotice: null,
   dragged: null,
   moving: null,
 };
@@ -66,6 +64,7 @@ function flushSave() {
   state.dirty = false;
   Object.assign(state.selected, api.saveEntry(state.selected.filename, editor.value));
   refreshEntry(state.selected);
+  renderEntryMeta();
 }
 
 function scheduleSave() {
@@ -151,6 +150,7 @@ async function loadEntries() {
   state.entries = entries;
   state.folders = sortedFolders(folders);
   $('historyPath').textContent = folder;
+  $('historyHeader').title = `Show ${folder} in Finder`;
 
   const latest = entries[0];
   const emptyToday = entries.find((entry) => isToday(entry) && entry.previewText === '');
@@ -240,15 +240,20 @@ function renderEntry(entry) {
   actions.className = 'entry-actions';
   const moveButton = actionButton(
     'move',
-    'Move to folder',
+    'Move to Folder',
     FOLDER_OUTLINE,
     () => openMoveMenu(entry, moveButton),
   );
   actions.append(
     moveButton,
-    actionButton('export', 'Export entry as PDF', '<path class="stroke" d="M8 2v8M4.5 7 8 10.5 11.5 7M3 14h10"/>', () => exportEntry(entry)),
-    actionButton('trash', 'Delete entry', TRASH_OUTLINE, () => deleteEntry(entry)),
+    actionButton('export', 'Export as PDF…', EXPORT_OUTLINE, () => exportEntry(entry)),
+    actionButton('trash', 'Move to Trash', TRASH_OUTLINE, () => deleteEntry(entry)),
   );
+  row.addEventListener('contextmenu', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    entryMenu(entry, { x: event.clientX, y: event.clientY });
+  });
   row.append(actions, page, preview, time);
   return row;
 }
@@ -263,6 +268,8 @@ const isWithin = (path, ancestor) => path === ancestor || path.startsWith(`${anc
 const repath = (path, from, to) => (path !== null && isWithin(path, from) ? to + path.slice(from.length) : path);
 const childFolders = (parent) => state.folders.filter((path) => parentOf(path) === parent);
 const plural = (count, one, many) => `${count} ${count === 1 ? one : many}`;
+const PENCIL_OUTLINE = '<path class="stroke" d="m3 13 .6-2.600 7-7 2 2-7 7z"/>';
+const EXPORT_OUTLINE = '<path class="stroke" d="M8 2v8M4.5 7 8 10.5 11.5 7M3 14h10"/>';
 const FOLDER_PLUS = '<path class="stroke" d="M2 4.500V12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.500 3.500H3a1 1 0 0 0-1 1zM8 7v4M6 9h4"/>';
 
 function sortedFolders(paths) {
@@ -285,8 +292,6 @@ function folderIcon() {
 function showFolder(path) {
   closePopovers();
   state.openFolder = path;
-  state.confirmingDelete = null;
-  state.folderNotice = null;
   renderEntries();
   $('entryList').scrollTop = 0;
 }
@@ -354,7 +359,6 @@ async function renameFolder(path, newName) {
 // Entries anywhere inside a deleted folder move up into the folder that held it.
 async function deleteFolder(path) {
   const parent = parentOf(path);
-  state.confirmingDelete = null;
   try {
     await api.deleteFolder(path);
     state.folders = state.folders.filter((folder) => !isWithin(folder, path));
@@ -363,34 +367,20 @@ async function deleteFolder(path) {
     });
     showFolder(parent);
   } catch (error) {
-    state.folderNotice = String(error);
-    renderEntries();
+    await showAlert({ title: `Couldn’t delete “${leafOf(path)}”`, message: String(error), confirm: 'OK', cancel: null });
   }
 }
 
-function askToDelete(path) {
-  state.confirmingDelete = path;
-  state.folderNotice = null;
-  renderEntries();
-}
-
-function renderDeleteConfirm(path) {
+// Deleting can't be undone in the app, so it asks first, as the HIG asks for destructive actions.
+async function askToDelete(path) {
   const parent = parentOf(path);
-  const box = document.createElement('div');
-  box.className = 'folder-confirm';
-  const text = document.createElement('p');
-  text.textContent = `Delete \u201c${leafOf(path)}\u201d? Everything written in it moves to ${parent === null ? 'History' : `\u201c${leafOf(parent)}\u201d`}.`;
-  const cancel = popoverButton('Cancel', () => {
-    state.confirmingDelete = null;
-    renderEntries();
+  const ok = await showAlert({
+    title: `Delete “${leafOf(path)}”?`,
+    message: `Everything written in it moves to ${parent === null ? 'History' : `“${leafOf(parent)}”`}. The empty folder goes to the Trash.`,
+    confirm: 'Delete',
+    destructive: true,
   });
-  const remove = popoverButton('Delete Folder', () => deleteFolder(path));
-  remove.className = 'danger';
-  const buttons = document.createElement('div');
-  buttons.className = 'folder-confirm-buttons';
-  buttons.append(cancel, remove);
-  box.append(text, buttons);
-  return box;
+  if (ok) deleteFolder(path);
 }
 
 function folderNameInput(path) {
@@ -510,19 +500,21 @@ function renderFolder(path) {
     if (event.key === 'Enter') showFolder(path);
   });
   startDrag(tile, 'application/x-runon-folder', path, { folder: path });
+  tile.addEventListener('contextmenu', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    folderMenu(path, { x: event.clientX, y: event.clientY });
+  });
   acceptDrops(tile, path);
   return tile;
 }
 
-function renderToolbar() {
-  const head = document.createElement('div');
-  head.className = 'folders-head';
-  const heading = document.createElement('div');
-  heading.className = 'day-label';
-  const loose = state.entries.filter((entry) => entry.folder === null).length;
-  heading.textContent = `${plural(childFolders(null).length, 'folder', 'folders')}, ${plural(loose, 'entry', 'entries')}`;
-  head.append(heading, actionButton('new-folder', 'New folder', PLUS_OUTLINE, addFolder));
-  return head;
+// The status bar at the foot of the sidebar, like a Finder window's.
+function renderStatusBar(folders, entries) {
+  const parts = [];
+  if (folders) parts.push(plural(folders, 'folder', 'folders'));
+  parts.push(plural(entries, 'entry', 'entries'));
+  $('statusBar').textContent = parts.join(', ');
 }
 
 function renderFolderHead(path) {
@@ -548,53 +540,149 @@ function renderFolderHead(path) {
     const actions = document.createElement('div');
     actions.className = 'entry-actions';
     actions.append(
-      actionButton('new-entry', 'New entry in this folder', PLUS_OUTLINE, createEntry),
-      actionButton('new-folder', 'New folder inside this one', FOLDER_PLUS, addFolder),
-      actionButton('rename', 'Rename folder', '<path class="stroke" d="m3 13 .6-2.600 7-7 2 2-7 7z"/>', () => startRenaming(path)),
-      actionButton('trash', 'Delete folder', TRASH_OUTLINE, () => askToDelete(path)),
+      actionButton('new-entry', 'New Entry', PLUS_OUTLINE, createEntry),
+      actionButton('new-folder', 'New Folder', FOLDER_PLUS, addFolder),
+      actionButton('rename', 'Rename', PENCIL_OUTLINE, () => startRenaming(path)),
+      actionButton('trash', 'Delete Folder…', TRASH_OUTLINE, () => askToDelete(path)),
     );
     title.append(actions);
   }
   head.append(back, title);
-  if (state.confirmingDelete === path) head.append(renderDeleteConfirm(path));
-  if (state.folderNotice) {
-    const notice = document.createElement('p');
-    notice.className = 'folder-notice';
-    notice.textContent = state.folderNotice;
-    head.append(notice);
-  }
   return head;
 }
 
-function openMoveMenu(entry, button) {
-  const menu = $('movePopover');
-  const wasOpen = !menu.hidden && state.moving === entry;
+// A menu like an NSMenu: Title Case items, separators, red for destructive items.
+// `at` is a point for right-clicks, or a button to open under.
+function showMenu(items, at) {
   closePopovers();
-  if (wasOpen) return;
-  state.moving = entry;
-  const moveTo = (folder) => () => {
-    closePopovers();
-    moveEntry(entry, folder);
-  };
-  const choices = state.folders
-    .filter((path) => path !== entry.folder)
-    .map((path) => popoverButton(path.split('/').join(' › '), moveTo(path)));
-  if (entry.folder !== null) choices.unshift(popoverButton('Back to History', moveTo(null)));
-  choices.push(popoverButton('New Folder', async () => {
-    closePopovers();
-    try {
-      const path = await makeFolder(state.openFolder);
-      await moveEntry(entry, path);
-      startRenaming(path);
-    } catch (error) {
-      console.error('Could not create folder:', error);
+  const menu = $('contextMenu');
+  const rows = items.map((item) => {
+    if (item === '-') {
+      const line = document.createElement('div');
+      line.className = 'menu-separator';
+      line.setAttribute('role', 'separator');
+      return line;
     }
-  }));
-  menu.replaceChildren(...choices);
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = `row${item.destructive ? ' destructive' : ''}`;
+    row.setAttribute('role', 'menuitem');
+    row.textContent = item.label;
+    row.addEventListener('click', () => {
+      closePopovers();
+      item.action();
+    });
+    return row;
+  });
+  menu.replaceChildren(...rows);
   menu.hidden = false;
-  const place = button.getBoundingClientRect();
-  menu.style.left = `${place.left}px`;
-  menu.style.top = `${Math.max(8, Math.min(place.bottom + 6, window.innerHeight - menu.offsetHeight - 8))}px`;
+  const point = at instanceof Element
+    ? (({ left, bottom }) => ({ x: left, y: bottom + 4 }))(at.getBoundingClientRect())
+    : at;
+  menu.style.left = `${Math.max(8, Math.min(point.x, window.innerWidth - menu.offsetWidth - 8))}px`;
+  menu.style.top = `${Math.max(8, Math.min(point.y, window.innerHeight - menu.offsetHeight - 8))}px`;
+  menu.querySelector('.row')?.focus({ preventScroll: true });
+}
+
+function moveMenuItems(entry) {
+  const items = state.folders
+    .filter((path) => path !== entry.folder)
+    .map((path) => ({ label: path.split('/').join(' › '), action: () => moveEntry(entry, path) }));
+  if (entry.folder !== null) items.unshift({ label: 'History', action: () => moveEntry(entry, null) }, '-');
+  if (items.length && items[items.length - 1] !== '-') items.push('-');
+  items.push({
+    label: 'New Folder',
+    action: async () => {
+      try {
+        const path = await makeFolder(state.openFolder);
+        await moveEntry(entry, path);
+        startRenaming(path);
+      } catch (error) {
+        console.error('Could not create folder:', error);
+      }
+    },
+  });
+  return items;
+}
+
+function openMoveMenu(entry, button) {
+  const menu = $('contextMenu');
+  const wasOpen = !menu.hidden && state.moving === entry;
+  if (wasOpen) {
+    closePopovers();
+    return;
+  }
+  showMenu(moveMenuItems(entry), button);
+  state.moving = entry;
+}
+
+function entryMenu(entry, point) {
+  showMenu([
+    { label: 'Open', action: () => selectEntry(entry) },
+    '-',
+    { label: 'Move to Folder…', action: () => showMenu(moveMenuItems(entry), point) },
+    { label: 'Export as PDF…', action: () => exportEntry(entry) },
+    '-',
+    { label: 'Move to Trash', destructive: true, action: () => deleteEntry(entry) },
+  ], point);
+}
+
+function folderMenu(path, point) {
+  showMenu([
+    { label: 'Open', action: () => showFolder(path) },
+    '-',
+    { label: 'Rename', action: () => startRenaming(path) },
+    { label: 'New Folder Inside', action: () => { state.openFolder = path; addFolder(); } },
+    '-',
+    { label: 'Delete Folder…', destructive: true, action: () => askToDelete(path) },
+  ], point);
+}
+
+function backgroundMenu(point) {
+  showMenu([
+    { label: 'New Entry', action: () => createEntry() },
+    { label: 'New Folder', action: () => addFolder() },
+  ], point);
+}
+
+/* ---------- Alert ---------- */
+
+// A centred alert with one or two buttons. Resolves true when the main button is chosen.
+// For destructive actions, Cancel is the default, so Return never deletes by accident.
+function showAlert({ title, message, confirm = 'OK', cancel = 'Cancel', destructive = false }) {
+  closePopovers();
+  const alert = $('alert');
+  const confirmButton = $('alertConfirm');
+  const cancelButton = $('alertCancel');
+  $('alertTitle').textContent = title;
+  $('alertMessage').textContent = message;
+  confirmButton.textContent = confirm;
+  confirmButton.className = destructive ? 'destructive' : 'default';
+  cancelButton.hidden = !cancel;
+  cancelButton.textContent = cancel || '';
+  cancelButton.className = destructive ? 'default' : '';
+  alert.hidden = false;
+  (destructive || !cancel ? (cancel ? cancelButton : confirmButton) : confirmButton).focus();
+  return new Promise((resolve) => {
+    const done = (value) => {
+      alert.hidden = true;
+      confirmButton.onclick = null;
+      cancelButton.onclick = null;
+      alert.onkeydown = null;
+      editor.focus();
+      resolve(value);
+    };
+    confirmButton.onclick = () => done(true);
+    cancelButton.onclick = () => done(false);
+    alert.onkeydown = (event) => {
+      event.stopPropagation();
+      if (event.key === 'Escape') done(false);
+      else if (event.key === 'Tab') {
+        event.preventDefault();
+        (document.activeElement === confirmButton && cancel ? cancelButton : confirmButton).focus();
+      }
+    };
+  });
 }
 
 function renderEntries() {
@@ -606,7 +694,8 @@ function renderEntries() {
   const grid = document.createElement('div');
   grid.className = 'file-grid';
   grid.append(...folders.map(renderFolder), ...entries.map(renderEntry));
-  const parts = [inFolder ? renderFolderHead(state.openFolder) : renderToolbar()];
+  const parts = inFolder ? [renderFolderHead(state.openFolder)] : [];
+  renderStatusBar(folders.length, entries.length);
   if (grid.children.length) parts.push(grid);
   if (inFolder && !grid.children.length) {
     const empty = document.createElement('div');
@@ -625,27 +714,46 @@ function renderEntries() {
 
 /* ---------- Controls ---------- */
 
+// The entry's date is the window title, with its length underneath, as in Pages or Notes.
 function renderEntryDate() {
   const date = new Date(state.selected.timestamp);
   const part = (options) => date.toLocaleDateString('en-GB', options);
   $('entryDate').textContent = `${part({ weekday: 'long' })} ${part({ day: 'numeric' })} ${part({ month: 'long' })}`;
+  renderEntryMeta();
+}
+
+function renderEntryMeta() {
+  if (!state.selected) return;
+  const words = state.selected.words || 0;
+  $('entryMeta').textContent = words ? plural(words, 'word', 'words') : 'Empty';
 }
 
 function applyFont() {
   document.documentElement.style.setProperty('--editor-font', state.fontFamily);
   document.documentElement.style.setProperty('--editor-size', `${state.fontSize}px`);
-  $('sizeBtn').textContent = `${state.fontSize}px`;
+  $('sizeBtn').textContent = `${state.fontSize} pt`;
+  $('sizeDown').disabled = state.fontSize === FONT_SIZES[0];
+  $('sizeUp').disabled = state.fontSize === FONT_SIZES[FONT_SIZES.length - 1];
   document.querySelectorAll('.font-btn').forEach((button) => {
     button.classList.toggle('active', button.dataset.font === state.fontKey);
   });
   $('randomBtn').classList.toggle('active', state.fontKey === 'Random');
 }
 
-function applyTheme(theme) {
+const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+
+// With no choice saved, Runon follows Light or Dark in System Settings, as the HIG asks.
+function applyTheme(theme, remember = true) {
   document.documentElement.dataset.theme = theme;
-  $('themeLabel').textContent = theme === 'dark' ? 'Light mode' : 'Dark mode';
-  localStorage.setItem('colorScheme', theme);
-  api.setTheme(theme);
+  $('themeBtn').setAttribute('aria-checked', String(theme === 'dark'));
+  if (remember) localStorage.setItem('colorScheme', theme);
+  api.setTheme(remember ? theme : null);
+}
+
+function applySavedTheme() {
+  const saved = localStorage.getItem('colorScheme');
+  if (saved === 'dark' || saved === 'light') applyTheme(saved);
+  else applyTheme(systemDark.matches ? 'dark' : 'light', false);
 }
 
 function toggleTheme() {
@@ -668,7 +776,7 @@ function renderTimer() {
   const minutes = Math.floor(state.timeRemaining / 60);
   const seconds = String(state.timeRemaining % 60).padStart(2, '0');
   const time = `${minutes}:${seconds}`;
-  $('timerBtn').textContent = time;
+  $('timerText').textContent = time;
   $('timerValue').textContent = time;
   if (state.timerRunning && !state.timerClock) {
     state.timerClock = setInterval(tick, 1000);
@@ -778,9 +886,10 @@ function handleTimerScroll(event) {
 
 function closePopovers() {
   $('menu').hidden = true;
+  $('formatPanel').hidden = true;
   $('timerPanel').hidden = true;
   $('chatPopover').hidden = true;
-  $('movePopover').hidden = true;
+  $('contextMenu').hidden = true;
 }
 
 function popoverText(text) {
@@ -986,6 +1095,18 @@ function wireControls() {
     state.fontSize = FONT_SIZES[(index + 1) % FONT_SIZES.length];
     applyFont();
   });
+  const stepSize = (direction) => {
+    const index = FONT_SIZES.indexOf(state.fontSize) + direction;
+    state.fontSize = FONT_SIZES[Math.min(Math.max(index, 0), FONT_SIZES.length - 1)];
+    applyFont();
+  };
+  $('sizeDown').addEventListener('click', () => stepSize(-1));
+  $('sizeUp').addEventListener('click', () => stepSize(1));
+  $('formatBtn').addEventListener('click', () => {
+    const opening = $('formatPanel').hidden;
+    closePopovers();
+    $('formatPanel').hidden = !opening;
+  });
 
   document.querySelectorAll('.font-btn').forEach((button) => {
     button.addEventListener('click', () => {
@@ -1028,7 +1149,7 @@ function wireControls() {
   });
   $('backspaceBtn').addEventListener('click', () => {
     state.backspaceDisabled = !state.backspaceDisabled;
-    $('backspaceLabel').textContent = state.backspaceDisabled ? 'Backspace is Off' : 'Backspace is On';
+    $('backspaceBtn').setAttribute('aria-checked', String(!state.backspaceDisabled));
     editor.focus();
   });
   $('fullscreenBtn').addEventListener('click', () => {
@@ -1044,20 +1165,50 @@ function wireControls() {
   $('themeBtn').addEventListener('click', toggleTheme);
   const toggleHistory = () => {
     $('sidebar').hidden = !$('sidebar').hidden;
+    const label = $('sidebar').hidden ? 'Show Sidebar' : 'Hide Sidebar';
+    $('historyBtn').title = label;
+    $('historyBtn').setAttribute('aria-label', label);
+    $('historyBtn').setAttribute('aria-expanded', String(!$('sidebar').hidden));
     renderEntries();
     editor.focus();
   };
   $('historyBtn').addEventListener('click', toggleHistory);
-  $('topLogo').addEventListener('click', toggleHistory);
+  $('newFolderBtn').addEventListener('click', addFolder);
+  $('aboutBtn').addEventListener('click', () => showAlert({
+    title: 'Runon',
+    message: 'Version 1.0\nA quiet place to write without stopping.\n\nBuilt by Shah Hassan. Based on Freewrite by Farza Majeed.',
+    confirm: 'OK',
+    cancel: null,
+  }));
   $('historyHeader').addEventListener('click', () => api.openFolder());
 
-  nav.addEventListener('mouseenter', () => setNavVisible(true));
-  nav.addEventListener('mouseleave', () => {
+  $('topbar').addEventListener('mouseenter', () => setNavVisible(true));
+  $('topbar').addEventListener('mouseleave', () => {
     if (state.timerRunning) setNavVisible(false);
   });
 
   document.addEventListener('mousedown', (event) => {
-    if (!event.target.closest('.anchor, #movePopover, .move')) closePopovers();
+    if (!event.target.closest('.anchor, #contextMenu, .move, #alert')) closePopovers();
+  });
+  // Arrow keys move through an open menu, like any Mac menu.
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    const menu = [$('contextMenu'), $('menu')].find((candidate) => !candidate.hidden);
+    if (!menu) return;
+    const rows = [...menu.querySelectorAll('.row')];
+    if (!rows.length) return;
+    event.preventDefault();
+    const index = rows.indexOf(document.activeElement);
+    const next = index < 0 ? 0 : (index + (event.key === 'ArrowDown' ? 1 : -1) + rows.length) % rows.length;
+    rows[next].focus();
+  });
+  $('entryList').addEventListener('contextmenu', (event) => {
+    event.preventDefault();
+    backgroundMenu({ x: event.clientX, y: event.clientY });
+  });
+  // The page's own right-click menu (Reload, Inspect) isn't part of a Mac app.
+  document.addEventListener('contextmenu', (event) => {
+    if (!event.target.closest('textarea, input')) event.preventDefault();
   });
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
@@ -1088,7 +1239,7 @@ function wireControls() {
   api.onNewEntry(createEntry);
   api.onFullscreenChange((value) => {
     document.documentElement.classList.toggle('fullscreen', value);
-    $('fullscreenLabel').textContent = value ? 'Exit Fullscreen' : 'Fullscreen';
+    $('fullscreenLabel').textContent = value ? 'Exit Full Screen' : 'Enter Full Screen';
   });
 
   // With the native drop handler off, a file dropped on the window would open in place of the app.
@@ -1113,7 +1264,10 @@ function wireControls() {
 }
 
 document.documentElement.dataset.platform = api.platform;
-applyTheme(localStorage.getItem('colorScheme') === 'dark' ? 'dark' : 'light');
+applySavedTheme();
+systemDark.addEventListener('change', () => {
+  if (!localStorage.getItem('colorScheme')) applySavedTheme();
+});
 applyFont();
 renderTimer();
 wireControls();

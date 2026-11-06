@@ -46,7 +46,8 @@
 
   window.runon = {
     platform: navigator.platform.startsWith('Mac') ? 'darwin' : 'win32',
-    setTheme: (theme) => invoke('set_theme', { dark: theme === 'dark' }),
+    // null hands the choice back to the system appearance.
+    setTheme: (theme) => invoke('set_theme', { dark: theme === null ? null : theme === 'dark' }),
     listEntries: async () => {
       const raw = await invoke('list_entries');
       const entries = raw

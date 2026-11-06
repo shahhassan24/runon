@@ -59,10 +59,10 @@
 
   await check('first launch: welcome guide opens', async () => { assert(!$('guide').hidden, 'hidden'); assert($('guide').textContent.includes('Begin anywhere'), 'text'); });
   await check('first launch: guide is not saved as an entry', async () => { equal(editor.value, ''); equal((await api.listEntries()).entries.length, 1); });
-  await check('light theme by default', async () => equal(document.documentElement.dataset.theme, 'light'));
+  await check('theme follows the system by default', async () => equal(document.documentElement.dataset.theme, matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
   await snap('guide');
   await check('Start writing closes the guide', async () => { $('guideClose').click(); assert($('guide').hidden, 'open'); });
-  await check('window title and logo', async () => { equal(document.title, 'Runon'); assert(visible($('topLogo')), 'no logo'); assert($('entryDate').textContent.length > 5, 'no date'); });
+  await check('window title, toolbar and word count', async () => { equal(document.title, 'Runon'); assert(visible($('historyBtn')), 'no sidebar button'); assert(visible($('searchBtn')), 'no search field'); assert($('entryDate').textContent.length > 5, 'no date'); equal($('entryMeta').textContent, 'Empty'); });
   await check('Literata font loads', async () => { await document.fonts.load('18px Literata'); assert(document.fonts.check('18px Literata'), 'not loaded'); });
 
   await check('typing autosaves', async () => { type('hello runon'); await saved('hello runon'); });
@@ -70,13 +70,13 @@
   await check('Cmd+N makes a new entry', async () => { const before = state.entries.length; press('n', { metaKey: true }); await until(() => state.entries.length === before + 1, 'entry'); });
   await check('backspace can be blocked', async () => {
     type('keep this');
-    openMenu(); $('backspaceBtn').click(); equal($('backspaceLabel').textContent, 'Backspace is Off');
+    openMenu(); $('backspaceBtn').click(); equal($('backspaceBtn').getAttribute('aria-checked'), 'false');
     editor.focus(); assert(press('Backspace').defaultPrevented, 'Backspace not blocked'); assert(press('Delete').defaultPrevented, 'Delete not blocked');
-    $('backspaceBtn').click(); equal($('backspaceLabel').textContent, 'Backspace is On'); editor.focus(); assert(!press('Backspace').defaultPrevented, 'still blocked');
+    $('backspaceBtn').click(); equal($('backspaceBtn').getAttribute('aria-checked'), 'true'); editor.focus(); assert(!press('Backspace').defaultPrevented, 'still blocked');
     closePopovers();
   });
 
-  await check('text size changes', async () => { $('sizeBtn').click(); equal($('sizeBtn').textContent, '20px'); equal(getComputedStyle(editor).fontSize, '20px'); });
+  await check('text size changes', async () => { $('sizeBtn').click(); equal($('sizeBtn').textContent, '20 pt'); equal(getComputedStyle(editor).fontSize, '20px'); });
   await check('fonts change and show as selected', async () => {
     document.querySelector('[data-font="Serif"]').click(); assert(/Times New Roman/.test(getComputedStyle(editor).fontFamily), 'font'); assert(document.querySelector('[data-font="Serif"]').classList.contains('active'), 'active');
     document.querySelector('[data-font="Arial"]').click(); assert(/Arial/.test(getComputedStyle(editor).fontFamily), 'font');
@@ -85,17 +85,18 @@
     $('randomBtn').click(); await until(() => $('randomBtn').textContent.startsWith('Random ['), 'random font');
     assert(state.fontList.length > 20, `only ${state.fontList.length}`); return `${state.fontList.length} fonts`;
   });
-  await check('bottom bar fits with History open and a long font name', async () => {
+  await check('toolbar fits with History open and a long font name', async () => {
     $('sidebar').hidden = false; renderEntries();
     $('randomBtn').textContent = 'Random [A Very Long Font Name That Goes On And On]';
-    const items = [...document.querySelectorAll('#nav > *, #fontNav > *')].filter((el) => el.id !== 'fontNav' && !el.classList.contains('nav-spacer'));
+    const items = [...document.querySelectorAll('#topbar > *, #nav > *')].filter((el) => el.id !== 'nav' && visible(el));
     const boxes = items.map((el) => el.getBoundingClientRect()).sort((a, b) => a.left - b.left);
     equal(boxes.filter((box, i) => i && box.left < boxes[i - 1].right - 0.5).length, 0, 'overlaps');
-    equal(nav.scrollWidth <= nav.clientWidth, true, 'overflow');
+    equal($('topbar').scrollWidth <= $('topbar').clientWidth, true, 'overflow');
+    $('formatBtn').click(); assert(!$('formatPanel').hidden, 'format popover'); assert($('formatPanel').scrollWidth <= $('formatPanel').clientWidth + 1, 'font name spills'); closePopovers();
     $('sidebar').hidden = true;
   });
   await check('back to Literata at normal size', async () => {
-    document.querySelector('[data-font="Literata"]').click(); while ($('sizeBtn').textContent !== '18px') $('sizeBtn').click();
+    document.querySelector('[data-font="Literata"]').click(); while ($('sizeBtn').textContent !== '18 pt') $('sizeBtn').click();
     equal($('randomBtn').textContent, 'Random');
   });
 
@@ -195,12 +196,12 @@
     await newEntry(); type('first entry text'); await saved('first entry text');
     await newEntry(); type('second entry text'); await saved('second entry text');
     $('historyBtn').click(); assert(!$('sidebar').hidden, 'hidden');
-    equal(document.querySelector('.day-label').textContent, 'Today');
+    assert(document.querySelector('.file-grid .entry.selected'), 'selected entry not shown in the grid');
     const row = [...document.querySelectorAll('.entry')].find((e) => e.textContent.includes('first entry text')); row.click();
     await until(() => editor.value === 'first entry text', 'first');
     [...document.querySelectorAll('.entry')].find((e) => e.textContent.includes('second entry text')).click();
     await until(() => editor.value === 'second entry text', 'second');
-    assert($('credit').textContent.includes('Built by Shah Hassan'), 'credit'); assert(visible(document.querySelector('.logo')), 'logo');
+    openMenu(); $('aboutBtn').click(); assert(!$('alert').hidden, 'about'); assert($('alertMessage').textContent.includes('Built by Shah Hassan'), 'credit'); $('alertConfirm').click(); assert($('alert').hidden, 'about stayed open');
   });
   await check('folders: entries and folders move on disk, and deleting keeps the writing', async () => {
     const entry = state.selected;
@@ -263,7 +264,7 @@
   await check('Escape and clicking outside close search', async () => {
     press('f', { metaKey: true }); press('Escape'); assert($('spotlight').hidden, 'Escape'); equal(document.activeElement, editor, 'focus');
     press('f', { metaKey: true }); $('spotlight').dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); assert($('spotlight').hidden, 'click outside');
-    openMenu(); $('searchBtn').click(); assert(!$('spotlight').hidden, 'menu row'); press('Escape');
+    $('searchBtn').click(); assert(!$('spotlight').hidden, 'toolbar search field'); press('Escape');
   });
   await check('search does not open over the welcome guide', async () => { openGuide(); press('f', { metaKey: true }); assert($('spotlight').hidden, 'opened'); $('guide').hidden = true; });
 
@@ -283,9 +284,10 @@
   });
 
   await check('dark mode, label and icon', async () => {
-    openMenu(); equal($('themeLabel').textContent, 'Dark mode'); assert(visible($('moonIcon')), 'moon');
+    if (document.documentElement.dataset.theme === 'dark') applyTheme('light');
+    openMenu(); equal($('themeBtn').getAttribute('aria-checked'), 'false'); assert(visible($('moonIcon')), 'moon');
     $('themeBtn').click(); await wait(600);
-    equal(document.documentElement.dataset.theme, 'dark'); equal(getComputedStyle(document.body).backgroundColor, 'rgb(22, 22, 20)'); equal($('themeLabel').textContent, 'Light mode'); assert(visible($('sunIcon')), 'sun');
+    equal(document.documentElement.dataset.theme, 'dark'); equal(getComputedStyle($('main')).backgroundColor, 'rgb(28, 28, 30)'); equal($('themeBtn').getAttribute('aria-checked'), 'true'); assert(visible($('sunIcon')), 'sun');
     assert(!document.documentElement.classList.contains('theme-fading'), 'fade class stayed'); closePopovers();
   });
   await check('welcome guide opens from the menu and Escape closes it', async () => { openMenu(); $('guideBtn').click(); assert(!$('guide').hidden, 'closed'); press('Escape'); assert($('guide').hidden, 'open'); });
@@ -298,9 +300,9 @@
     toggleTheme(); await wait(600); $('sidebar').hidden = true; openMenu(); await snap('menu-light'); closePopovers(); toggleTheme(); await wait(600);
   });
   await check('fullscreen turns on and off', async () => {
-    openMenu(); $('fullscreenBtn').click(); await until(() => $('fullscreenLabel').textContent === 'Exit Fullscreen', 'fullscreen', 6000);
+    openMenu(); $('fullscreenBtn').click(); await until(() => $('fullscreenLabel').textContent === 'Exit Full Screen', 'fullscreen', 6000);
     assert(document.documentElement.classList.contains('fullscreen'), 'class');
-    await wait(900); $('fullscreenBtn').click(); await until(() => $('fullscreenLabel').textContent === 'Fullscreen', 'exit', 6000); await wait(900);
+    await wait(900); $('fullscreenBtn').click(); await until(() => $('fullscreenLabel').textContent === 'Enter Full Screen', 'exit', 6000); await wait(900);
   });
   await check('no errors', async () => '');
 
