@@ -13,10 +13,17 @@
     const m = filename.match(/\]-\[(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})\]\.md$/);
     return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
   };
+  // A new entry is named by a UUID; a renamed one carries its title there instead.
+  const UUID = /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i;
+  const titleOf = (filename) => {
+    const title = filename.slice(1, filename.lastIndexOf(']-['));
+    return UUID.test(title) ? '' : title;
+  };
   const describe = (filename, content, folder = null) => {
     const timestamp = timestampOf(filename);
     return {
       filename,
+      title: titleOf(filename),
       folder,
       timestamp: timestamp.getTime(),
       displayDate: timestamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -60,6 +67,10 @@
     deleteFolder: (name) => inOrder('delete_folder', { name }),
     moveFolder: (name, into) => inOrder('move_folder', { name, into }),
     moveEntry,
+    renameEntry: async (filename, title) => {
+      const renamed = await inOrder('rename_entry', { filename, title });
+      return { filename: renamed, title: titleOf(renamed) };
+    },
     createEntry: async (folder = null) => {
       const now = new Date();
       const stamp = [now.getFullYear(), pad(now.getMonth() + 1), pad(now.getDate()), pad(now.getHours()), pad(now.getMinutes()), pad(now.getSeconds())].join('-');

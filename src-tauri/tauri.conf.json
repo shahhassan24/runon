@@ -10,6 +10,7 @@
       "label": "main", "title": "Runon",
       "width": 1100, "height": 600, "minWidth": 1100, "minHeight": 600,
       "titleBarStyle": "Overlay", "hiddenTitle": true,
+      "trafficLightPosition": { "x": 22, "y": 20 },
       "dragDropEnabled": false,
       "transparent": true,
       "windowEffects": { "effects": ["sidebar"], "state": "followsWindowActiveState" }

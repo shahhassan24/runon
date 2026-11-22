@@ -27,15 +27,25 @@ pub fn data_dir(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(dir)
 }
 
-/// Entries are named [UUID]-[yyyy-MM-dd-HH-mm-ss].md. Anything else is refused,
+/// Entries are named [NAME]-[yyyy-MM-dd-HH-mm-ss].md. A new entry's NAME is a UUID;
+/// renaming one puts the chosen title there instead. Anything else is refused,
 /// so the interface can never reach a file outside the entries folder.
 pub fn is_entry_filename(name: &str) -> bool {
-    const SHAPE: &str = "[HHHHHHHH-HHHH-HHHH-HHHH-HHHHHHHHHHHH]-[DDDD-DD-DD-DD-DD-DD].md";
-    name.len() == SHAPE.len() && name.bytes().zip(SHAPE.bytes()).all(|(c, want)| match want {
-        b'H' => c.is_ascii_hexdigit(),
+    const STAMP: &str = "]-[DDDD-DD-DD-DD-DD-DD].md";
+    if !name.starts_with('[') || name.len() < STAMP.len() + 2 { return false; }
+    let Some(title) = name.get(1..name.len() - STAMP.len()) else { return false };
+    let tail = &name[name.len() - STAMP.len()..];
+    let stamp_ok = tail.bytes().zip(STAMP.bytes()).all(|(c, want)| match want {
         b'D' => c.is_ascii_digit(),
         other => c == other,
-    })
+    });
+    stamp_ok && is_entry_title(title)
+}
+
+/// An entry's title follows the rules for folder names, and can't use brackets,
+/// which mark where the title ends.
+pub fn is_entry_title(title: &str) -> bool {
+    is_folder_name(title) && !title.contains(['[', ']'])
 }
 
 /// Folders are ordinary folders inside the entries folder, and can hold more folders.
@@ -214,6 +224,27 @@ fn move_entry(app: AppHandle, filename: String, folder: Option<String>) -> Resul
     fs::rename(source, dir.join(&filename)).map_err(|e| e.to_string())
 }
 
+/// Gives an entry a title by renaming its file. The date part stays, so it keeps its place.
+/// Returns the new filename.
+#[tauri::command]
+fn rename_entry(app: AppHandle, filename: String, title: String) -> Result<String, String> {
+    let title = title.trim();
+    if !is_entry_title(title) {
+        return Err("Names can't use / \\ : * ? \" < > | [ ] or start with a dot".into());
+    }
+    let source = entry_path(&app, &filename)?;
+    let stamp = &filename[filename.rfind("]-[").ok_or("Invalid entry filename")? + 1..];
+    let new_filename = format!("[{title}]{stamp}");
+    if new_filename == filename { return Ok(new_filename); }
+    // Filenames stay unique everywhere, since entries are found by filename alone.
+    let existing = entry_path(&app, &new_filename)?;
+    if existing.exists() && new_filename.to_lowercase() != filename.to_lowercase() {
+        return Err("Another entry from the same moment already has that name".into());
+    }
+    fs::rename(&source, source.with_file_name(&new_filename)).map_err(|e| e.to_string())?;
+    Ok(new_filename)
+}
+
 /// Moves a folder, with everything in it, into another folder or back to the top.
 #[tauri::command]
 fn move_folder(app: AppHandle, name: String, into: Option<String>) -> Result<(), String> {
@@ -332,7 +363,7 @@ fn main() {
 
     builder
         .invoke_handler(tauri::generate_handler![
-        folder, list_entries, list_folders, create_folder, rename_folder, delete_folder, move_entry, move_folder,
+        folder, list_entries, list_folders, create_folder, rename_folder, delete_folder, move_entry, rename_entry, move_folder,
         read_entry, write_entry, trash_entry, open_folder, open_chat, copy_text,
         list_fonts, set_theme, toggle_fullscreen, exit_now,
         pdf::export_pdf, pdf::pdf_job, pdf::pdf_layout,
@@ -405,6 +436,8 @@ mod tests {
     #[test]
     fn accepts_real_entry_names() {
         assert!(is_entry_filename("[6910BBDE-75FC-415C-ABB9-C76644B037B2]-[2026-02-20-08-01-04].md"));
+        assert!(is_entry_filename("[Landing page notes]-[2026-02-20-08-01-04].md"));
+        assert!(is_entry_filename("[Café ideas]-[2026-02-20-08-01-04].md"));
     }
 
     #[test]
@@ -414,7 +447,11 @@ mod tests {
             "notes.md",
             "[6910BBDE-75FC-415C-ABB9-C76644B037B2]-[2026-02-20-08-01-04].md.tmp",
             "[../../../../../../../../../etc/passwd]-[2026-02-20-08-01-04].md",
-            "[ZZZZZZZZ-75FC-415C-ABB9-C76644B037B2]-[2026-02-20-08-01-04].md",
+            "[a/b]-[2026-02-20-08-01-04].md",
+            "[.hidden]-[2026-02-20-08-01-04].md",
+            "[a]b]-[2026-02-20-08-01-04].md",
+            "[]-[2026-02-20-08-01-04].md",
+            "[Note]-[2026-02-20-08-01-0x].md",
             "",
         ] {
             assert!(!is_entry_filename(name), "{name}");

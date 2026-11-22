@@ -47,6 +47,7 @@ const state = {
   folders: [],
   openFolder: null,
   renamingFolder: null,
+  renamingEntry: null,
   dragged: null,
   moving: null,
 };
@@ -200,8 +201,75 @@ function refreshEntry(entry) {
   if ($('sidebar').hidden) return;
   const row = [...document.querySelectorAll('#entryList .entry')].find((tile) => tile.dataset.filename === entry.filename);
   if (!row) return;
-  row.querySelector('.entry-preview').textContent = entry.previewText || 'Empty entry';
+  const preview = row.querySelector('.entry-preview');
+  if (preview) preview.textContent = entryName(entry);
   row.querySelector('.entry-page-text').textContent = entry.thumbText || '';
+}
+
+// An entry is called by its title once it has one, and by its first words until then.
+const entryName = (entry) => entry.title || entry.previewText || 'Empty entry';
+
+function startRenamingEntry(entry) {
+  flushSave();
+  closePopovers();
+  state.renamingFolder = null;
+  state.renamingEntry = entry;
+  renderEntries();
+}
+
+async function renameEntry(entry, title) {
+  const { filename, title: saved } = await api.renameEntry(entry.filename, title);
+  entry.filename = filename;
+  entry.title = saved;
+  if (entry === state.selected) renderEntryDate();
+}
+
+// Works like the folder name field: Return saves, Escape cancels, clicking away saves.
+// An empty name takes the title away, so the entry is called by its first words again.
+function entryNameInput(entry) {
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'folder-input entry-input';
+  input.value = entry.title || entry.previewText.replace(/\.\.\.$/, '').replace(/[[\]/\\:*?"<>|]/g, '').trim();
+  input.placeholder = 'Name';
+  input.spellcheck = false;
+  input.maxLength = 60;
+  input.setAttribute('aria-label', 'Entry name');
+  let finished = false;
+  const finish = async (save, leaving = false) => {
+    if (finished) return;
+    finished = true;
+    const title = input.value.trim();
+    if (save && title !== entry.title) {
+      try {
+        if (title) await renameEntry(entry, title);
+        else await renameEntry(entry, crypto.randomUUID().toUpperCase());
+      } catch (error) {
+        finished = false;
+        if (leaving) {
+          finish(false);
+          return;
+        }
+        input.title = String(error);
+        input.classList.add('invalid');
+        input.focus();
+        input.select();
+        return;
+      }
+    }
+    state.renamingEntry = null;
+    renderEntries();
+    editor.focus();
+  };
+  input.addEventListener('click', (event) => event.stopPropagation());
+  input.addEventListener('mousedown', (event) => event.stopPropagation());
+  input.addEventListener('blur', () => finish(true, true));
+  input.addEventListener('keydown', (event) => {
+    event.stopPropagation();
+    if (event.key === 'Enter') finish(true);
+    else if (event.key === 'Escape') finish(false);
+  });
+  return input;
 }
 
 // Shown like a file in Finder: a page with the start of the writing on it, and its name below.
@@ -211,7 +279,7 @@ function renderEntry(entry) {
   row.dataset.filename = entry.filename;
   row.tabIndex = 0;
   row.setAttribute('role', 'button');
-  row.title = `${entry.previewText || 'Empty entry'}\n${new Date(entry.timestamp).toLocaleString('en-US', {
+  row.title = `${entryName(entry)}\n${new Date(entry.timestamp).toLocaleString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
   })}`;
   startDrag(row, 'application/x-runon-entry', entry.filename, { entry });
@@ -229,9 +297,19 @@ function renderEntry(entry) {
   pageText.textContent = entry.thumbText || '';
   page.append(pageText);
 
-  const preview = document.createElement('div');
-  preview.className = 'entry-preview';
-  preview.textContent = entry.previewText || 'Empty entry';
+  let preview;
+  if (state.renamingEntry === entry) {
+    preview = entryNameInput(entry);
+    row.draggable = false;
+  } else {
+    preview = document.createElement('div');
+    preview.className = 'entry-preview';
+    preview.textContent = entryName(entry);
+    row.addEventListener('dblclick', (event) => {
+      if (event.target.closest('.entry-actions')) return;
+      startRenamingEntry(entry);
+    });
+  }
   const time = document.createElement('div');
   time.className = 'entry-time';
   time.textContent = entryCaption(entry);
@@ -245,6 +323,7 @@ function renderEntry(entry) {
     () => openMoveMenu(entry, moveButton),
   );
   actions.append(
+    actionButton('rename', 'Rename', PENCIL_OUTLINE, () => startRenamingEntry(entry)),
     moveButton,
     actionButton('export', 'Export as PDF…', EXPORT_OUTLINE, () => exportEntry(entry)),
     actionButton('trash', 'Move to Trash', TRASH_OUTLINE, () => deleteEntry(entry)),
@@ -339,6 +418,7 @@ async function makeFolder(parent) {
 
 function startRenaming(path) {
   flushSave();
+  state.renamingEntry = null;
   state.renamingFolder = path;
   renderEntries();
 }
@@ -619,6 +699,7 @@ function openMoveMenu(entry, button) {
 function entryMenu(entry, point) {
   showMenu([
     { label: 'Open', action: () => selectEntry(entry) },
+    { label: 'Rename', action: () => startRenamingEntry(entry) },
     '-',
     { label: 'Move to Folder…', action: () => showMenu(moveMenuItems(entry), point) },
     { label: 'Export as PDF…', action: () => exportEntry(entry) },
@@ -705,6 +786,7 @@ function renderEntries() {
   }
   const list = $('entryList');
   list.replaceChildren(...parts);
+  $('sidebar').classList.toggle('in-folder', inFolder);
   const nameInput = list.querySelector('.folder-input');
   if (nameInput) {
     nameInput.focus();
@@ -718,14 +800,19 @@ function renderEntries() {
 function renderEntryDate() {
   const date = new Date(state.selected.timestamp);
   const part = (options) => date.toLocaleDateString('en-GB', options);
-  $('entryDate').textContent = `${part({ weekday: 'long' })} ${part({ day: 'numeric' })} ${part({ month: 'long' })}`;
+  const day = `${part({ weekday: 'long' })} ${part({ day: 'numeric' })} ${part({ month: 'long' })}`;
+  // A named entry shows its name, with the date moving underneath.
+  $('entryDate').textContent = state.selected.title || day;
+  $('entryDate').dataset.day = state.selected.title ? day : '';
   renderEntryMeta();
 }
 
 function renderEntryMeta() {
   if (!state.selected) return;
   const words = state.selected.words || 0;
-  $('entryMeta').textContent = words ? plural(words, 'word', 'words') : 'Empty';
+  const length = words ? plural(words, 'word', 'words') : 'Empty';
+  const day = $('entryDate').dataset.day;
+  $('entryMeta').textContent = day ? `${day} · ${length}` : length;
 }
 
 function applyFont() {
@@ -1083,6 +1170,8 @@ function wireControls() {
     state.lastInput = Date.now();
     $('runline').classList.remove('idle');
     if (state.timerRunning) setNavVisible(false);
+    // Writing at the end keeps the newest line clear of the bottom edge, not tucked under it.
+    if (editor.selectionEnd === editor.value.length) editor.scrollTop = editor.scrollHeight;
   });
   editor.addEventListener('keydown', (event) => {
     if (state.backspaceDisabled && (event.key === 'Backspace' || event.key === 'Delete')) {

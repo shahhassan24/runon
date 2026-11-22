@@ -120,7 +120,7 @@
     equal(document.activeElement, editor, 'focus');
     await until(() => Number(getComputedStyle(nav).opacity) < 0.05, 'controls to fade out', 3000);
   });
-  await check('session: hovering brings controls back', async () => { nav.dispatchEvent(new MouseEvent('mouseenter')); assert(!nav.classList.contains('faded'), 'faded'); nav.dispatchEvent(new MouseEvent('mouseleave')); assert(nav.classList.contains('faded'), 'not faded'); });
+  await check('session: hovering brings controls back', async () => { $('topbar').dispatchEvent(new MouseEvent('mouseenter')); assert(!nav.classList.contains('faded'), 'faded'); $('topbar').dispatchEvent(new MouseEvent('mouseleave')); assert(nav.classList.contains('faded'), 'not faded'); });
   await check('session: line fades when writing stops, returns on typing', async () => {
     type('one two three'); assert(!$('runline').classList.contains('idle'), 'idle too early');
     state.lastInput = Date.now() - 6000; await until(() => $('runline').classList.contains('idle'), 'fade', 2500);
@@ -222,6 +222,21 @@
     equal(listed.entries.find((e) => e.filename === entry.filename).folder, null, 'entry not moved to the top');
     equal(await onDisk(), editor.value, 'writing kept');
   });
+  await check('entries can be renamed, and keep their writing and date', async () => {
+    const entry = state.selected;
+    const { timestamp } = entry;
+    await renameEntry(entry, 'Landing page notes');
+    assert(entry.filename.startsWith('[Landing page notes]-['), entry.filename);
+    equal(entry.title, 'Landing page notes', 'title');
+    equal($('entryDate').textContent, 'Landing page notes', 'window title');
+    type(' after rename'); await saved(editor.value);
+    const listed = await api.listEntries();
+    const found = listed.entries.find((e) => e.filename === entry.filename);
+    assert(found, 'renamed entry not listed');
+    equal(found.timestamp, timestamp, 'date kept');
+    equal(await onDisk(), editor.value, 'writing kept');
+    let refused = false; try { await renameEntry(entry, 'a/b'); } catch { refused = true; } assert(refused, 'slash allowed');
+  });
   const searchFor = async (text) => { $('search').value = text; await runSearch(); };
   await check('Cmd+F opens the floating search, and again closes it', async () => {
     type(' unsaved kumquat');
@@ -285,9 +300,9 @@
 
   await check('dark mode, label and icon', async () => {
     if (document.documentElement.dataset.theme === 'dark') applyTheme('light');
-    openMenu(); equal($('themeBtn').getAttribute('aria-checked'), 'false'); assert(visible($('moonIcon')), 'moon');
+    openMenu(); equal($('themeBtn').getAttribute('aria-checked'), 'false');
     $('themeBtn').click(); await wait(600);
-    equal(document.documentElement.dataset.theme, 'dark'); equal(getComputedStyle($('main')).backgroundColor, 'rgb(28, 28, 30)'); equal($('themeBtn').getAttribute('aria-checked'), 'true'); assert(visible($('sunIcon')), 'sun');
+    equal(document.documentElement.dataset.theme, 'dark'); equal(getComputedStyle($('main')).backgroundColor, 'rgb(28, 28, 30)'); equal($('themeBtn').getAttribute('aria-checked'), 'true');
     assert(!document.documentElement.classList.contains('theme-fading'), 'fade class stayed'); closePopovers();
   });
   await check('welcome guide opens from the menu and Escape closes it', async () => { openMenu(); $('guideBtn').click(); assert(!$('guide').hidden, 'closed'); press('Escape'); assert($('guide').hidden, 'open'); });

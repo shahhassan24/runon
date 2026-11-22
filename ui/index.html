@@ -9,11 +9,12 @@
 <body>
 <div id="app">
   <aside id="sidebar" hidden aria-label="History">
-    <div class="sidebar-top" data-tauri-drag-region></div>
-    <div class="sidebar-section">
-      <span class="section-title">History</span>
+    <div class="sidebar-top" data-tauri-drag-region>
       <button id="newFolderBtn" class="toolbar-btn small" type="button" title="New Folder" aria-label="New Folder"><svg viewBox="0 0 16 16" class="icon" aria-hidden="true"><path class="stroke" d="M2 4.500V12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.500 3.500H3a1 1 0 0 0-1 1zM8 7v4M6 9h4"/></svg></button>
       <button id="historyHeader" class="toolbar-btn small" type="button" title="Show in Finder" aria-label="Show in Finder"><svg viewBox="0 0 16 16" class="icon" aria-hidden="true"><path class="stroke" d="M9.500 2.500h4v4M13.500 2.500 8 8M12 9.500V13H3V4h3.500"/></svg></button>
+    </div>
+    <div class="sidebar-section">
+      <span class="section-title">History</span>
       <span id="historyPath" hidden></span>
     </div>
     <div id="entryList"></div>
