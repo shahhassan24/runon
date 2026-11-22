@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/writing-light.png" alt="Runon's writing screen in light mode, with an entry in progress, a few controls, and a thin timer line along the bottom" width="800">
+  <img src="docs/screenshots/writing-light.png" alt="Runon's writing screen in light mode, with an entry in progress, a floating toolbar with the timer and search, and a thin timer line along the bottom" width="800">
 </p>
 
 ## Why Runon
@@ -46,7 +46,7 @@ Turn off **Allow Backspace** in the More menu if you want to make going back imp
 - **Your look:** follows Light or Dark in System Settings, or pick one yourself. The **Aa** button sets the text size and the font: Literata, Arial, System, Times, or a random font from your computer.
 
 <p align="center">
-  <img src="docs/screenshots/history-dark.png" alt="Runon in dark mode with the history timeline open, listing past entries grouped by day" width="800">
+  <img src="docs/screenshots/history-dark.png" alt="Runon in dark mode with History open, showing folders and entries as files with previews of what was written" width="800">
 </p>
 
 ## Your privacy
