@@ -19,6 +19,8 @@ npm install
 
 To number a new release, change `version` in both `package.json` and `src-tauri/tauri.conf.json` before you build.
 
+To publish installers people can download, commit the version change and push a matching tag, for example `git tag v1.0.0 && git push origin v1.0.0`. The **Build installers** workflow builds the Mac and Windows installers and attaches them to a GitHub Release as `Runon-mac.dmg` and `Runon-windows-setup.exe`. The download links in the README always point at the latest release.
+
 The first build takes several minutes. Later builds are faster.
 
 ## macOS

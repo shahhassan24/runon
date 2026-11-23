@@ -1,9 +1,15 @@
-# Builds the installers this Mac can't make. Run it from the Actions tab on GitHub,
-# then download the results from the finished run.
+# Builds the Mac and Windows installers.
+# - Push a tag like v1.0.0 to publish them to a GitHub Release (people download from there).
+# - Or run it from the Actions tab to just build and download the results from the run.
 name: Build installers
 
 on:
   workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -15,10 +21,12 @@ jobs:
             os: macos-latest
             args: --target universal-apple-darwin --bundles dmg
             bundle: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            file: Runon-mac.dmg
           - name: windows-x64
             os: windows-latest
             args: --bundles nsis
             bundle: src-tauri/target/release/bundle/nsis/*.exe
+            file: Runon-windows-setup.exe
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -31,7 +39,25 @@ jobs:
         run: rustup target add x86_64-apple-darwin aarch64-apple-darwin
       - run: npm ci
       - run: npx tauri build ${{ matrix.args }}
+      # Fixed names so download links can always point at the latest release.
+      - name: Name the installer
+        shell: bash
+        run: mkdir -p dist && cp ${{ matrix.bundle }} dist/${{ matrix.file }}
       - uses: actions/upload-artifact@v4
         with:
           name: runon-${{ matrix.name }}
-          path: ${{ matrix.bundle }}
+          path: dist/${{ matrix.file }}
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

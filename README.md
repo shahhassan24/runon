@@ -68,7 +68,12 @@ A few things to know:
 
 ## Install
 
-Installers aren't published yet, so for now you'll need to [build Runon from source](#build-from-source).
+Download the installer for your computer. No cloning or setup needed.
+
+- **macOS** (Intel and Apple Silicon): [Runon-mac.dmg](https://github.com/shahhassan24/runon/releases/latest/download/Runon-mac.dmg)
+- **Windows** (64-bit): [Runon-windows-setup.exe](https://github.com/shahhassan24/runon/releases/latest/download/Runon-windows-setup.exe)
+
+Older versions are on the [Releases page](https://github.com/shahhassan24/runon/releases). You can also [build Runon from source](#build-from-source).
 
 | Platform | Requires | Status |
 | --- | --- | --- |
